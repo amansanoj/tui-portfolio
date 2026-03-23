@@ -40,73 +40,52 @@ func (m Model) View() string {
 func (m Model) renderURLPopup(base string) string {
 	url := m.showingURL
 
-	// Clamp URL display width
-	maxURLWidth := m.windowWidth - 12
-	displayURL := url
-	if len(displayURL) > maxURLWidth {
-		displayURL = displayURL[:maxURLWidth-3] + "..."
+	maxURLWidth := m.windowWidth - 16
+	if maxURLWidth < 20 {
+		maxURLWidth = 20
 	}
 
-	popupWidth := len(displayURL) + 6
-	if popupWidth < 44 {
-		popupWidth = 44
+	// Wrap URL across lines so it stays copyable
+	var urlLines []string
+	for len(url) > maxURLWidth {
+		urlLines = append(urlLines, url[:maxURLWidth])
+		url = url[maxURLWidth:]
 	}
+	if len(url) > 0 {
+		urlLines = append(urlLines, url)
+	}
+
+	var urlRendered string
+	for _, l := range urlLines {
+		urlRendered += m.styles.projectTitleStyle.Render(l) + "\n"
+	}
+	urlRendered = strings.TrimRight(urlRendered, "\n")
+
+	popupWidth := maxURLWidth + 8
 	if popupWidth > m.windowWidth-4 {
 		popupWidth = m.windowWidth - 4
 	}
 
-	popupStyle := lipgloss.NewStyle().
+	content := m.styles.mutedStyle.Render("Open this link in your browser:") + "\n\n" +
+		urlRendered + "\n\n" +
+		m.styles.dimStyle.Render("press any key to dismiss")
+
+	popup := lipgloss.NewStyle().
 		Border(lipgloss.RoundedBorder()).
 		BorderForeground(lipgloss.Color(primaryDefault)).
 		Background(lipgloss.Color(neutral800)).
 		Padding(1, 3).
-		Width(popupWidth)
+		Width(popupWidth).
+		Render(content)
 
-	content := m.styles.mutedStyle.Render("Open this link in your browser:") + "\n\n" +
-		m.styles.projectTitleStyle.Render(displayURL) + "\n\n" +
-		m.styles.dimStyle.Render("press any key to dismiss")
-
-	popup := popupStyle.Render(content)
-
-	// Center the popup
-	popupLines := strings.Split(popup, "\n")
-	popupH := len(popupLines)
-	popupW := lipgloss.Width(popup)
-
-	baseLines := strings.Split(base, "\n")
-	topPad := (m.windowHeight - popupH) / 2
-	leftPad := (m.windowWidth - popupW) / 2
-	if leftPad < 0 {
-		leftPad = 0
-	}
-	if topPad < 0 {
-		topPad = 0
-	}
-
-	prefix := strings.Repeat(" ", leftPad)
-	for i, pLine := range popupLines {
-		targetLine := topPad + i
-		if targetLine < len(baseLines) {
-			// Overlay popup line on top of base line
-			base_runes := []rune(baseLines[targetLine])
-			popup_runes := []rune(prefix + pLine)
-			// Pad base line if needed
-			for len(base_runes) < leftPad {
-				base_runes = append(base_runes, ' ')
-			}
-			// Replace characters in base with popup
-			result := make([]rune, len(base_runes))
-			copy(result, base_runes)
-			for j, r := range popup_runes {
-				if j < len(result) {
-					result[j] = r
-				}
-			}
-			baseLines[targetLine] = string(result)
-		}
-	}
-
-	return strings.Join(baseLines, "\n")
+	return lipgloss.Place(
+		m.windowWidth,
+		m.windowHeight,
+		lipgloss.Center,
+		lipgloss.Center,
+		popup,
+		lipgloss.WithWhitespaceBackground(lipgloss.Color(neutral900)),
+	)
 }
 
 func (m Model) renderSidebar() string {
