@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/charmbracelet/lipgloss"
 )
 
 type MenuItem struct {
@@ -15,7 +16,14 @@ type pageContent struct {
 	body string
 }
 
+type ContactItem struct {
+	Label  string
+	Handle string
+	URL    string
+}
+
 type Model struct {
+	styles                 Styles
 	selectedIndex          int
 	menuItems              []MenuItem
 	pageContents           []pageContent
@@ -32,19 +40,43 @@ type Model struct {
 	certBodyOffsets        []int
 	certRenderedOffsets    []int
 	certRenderedTotal      int
+	contactItems           []ContactItem
+	selectedContact        int
+	showingURL             string // non-empty = show URL popup
 }
 
-func NewModel() Model {
+var defaultContactItems = []ContactItem{
+	{Label: "Email", Handle: "aman@falak.me", URL: "mailto:aman@falak.me"},
+	{Label: "GitHub", Handle: "amansanoj", URL: "https://github.com/amansanoj"},
+	{Label: "LinkedIn", Handle: "amansanoj", URL: "https://linkedin.com/in/amansanoj"},
+}
+
+func buildContactBody(items []ContactItem) string {
+	var sb strings.Builder
+	for i, item := range items {
+		sb.WriteString(fmt.Sprintf("CONTACT|||%s|||%s|||%s\n", item.Label, item.Handle, item.URL))
+		if i < len(items)-1 {
+			sb.WriteString("\n")
+		}
+	}
+	return strings.TrimRight(sb.String(), "\n")
+}
+
+func NewModel(renderer *lipgloss.Renderer) Model {
 	notionProjects := fetchProjectsFromNotion()
 	notionCerts := fetchCertificationsFromNotion()
 
 	projectsContent, projBodyOffsets, projRenderedOffsets, projRenderedTotal := buildProjectsBody(notionProjects)
 	certsContent, certBodyOffsets, certRenderedOffsets, certRenderedTotal := buildCertsBody(notionCerts)
+	contactItems := defaultContactItems
+	contactBody := buildContactBody(contactItems)
 
 	return Model{
+		styles:                 makeStyles(renderer),
 		selectedIndex:          0,
 		selectedProject:        0,
 		selectedCert:           0,
+		selectedContact:        0,
 		projects:               notionProjects,
 		projectBodyOffsets:     projBodyOffsets,
 		projectRenderedOffsets: projRenderedOffsets,
@@ -53,6 +85,7 @@ func NewModel() Model {
 		certBodyOffsets:        certBodyOffsets,
 		certRenderedOffsets:    certRenderedOffsets,
 		certRenderedTotal:      certRenderedTotal,
+		contactItems:           contactItems,
 		menuItems: []MenuItem{
 			{title: "Home"},
 			{title: "About"},
@@ -125,11 +158,7 @@ French    ████░░░░░░░░  Basic`,
 			},
 			{body: projectsContent},
 			{body: certsContent},
-			{
-				body: `✉  aman@falak.me
-⚙  github.com/amansanoj
-💼  linkedin.com/in/amansanoj`,
-			},
+			{body: contactBody},
 		},
 		windowWidth:  120,
 		windowHeight: 30,
@@ -156,7 +185,7 @@ func buildProjectsBody(projects []Project) (string, []int, []int, int) {
 			sb.WriteString(fmt.Sprintf("%s\n", proj.Name))
 		}
 		bodyLine++
-		renderedLine += 2 // title + date
+		renderedLine += 2
 
 		sb.WriteString(fmt.Sprintf("%s\n", proj.Description))
 		bodyLine++
@@ -196,13 +225,11 @@ func buildCertsBody(certs []Certification) (string, []int, []int, int) {
 			sb.WriteString(fmt.Sprintf("CERT|||%s|||\n", cert.Title))
 		}
 		bodyLine++
-		renderedLine += 2 // title + date
+		renderedLine += 2
 
 		sb.WriteString(fmt.Sprintf("ORG|||%s\n", cert.Organization))
 		bodyLine++
 		renderedLine++
-
-		// No URL line in body — ↗ icon on title handles that visually
 
 		if i < len(certs)-1 {
 			sb.WriteString("\n")
@@ -220,20 +247,34 @@ func (m Model) Init() tea.Cmd {
 func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
+		// Any key dismisses the popup
+		if m.showingURL != "" {
+			m.showingURL = ""
+			return m, nil
+		}
+
 		switch msg.String() {
 		case "q", "ctrl+c":
 			return m, tea.Quit
 
 		case "enter":
-			if m.selectedIndex == 2 && len(m.projects) > m.selectedProject {
-				if url := m.projects[m.selectedProject].URL; url != "" {
-					openURL(url)
+			url := ""
+			switch m.selectedIndex {
+			case 2:
+				if len(m.projects) > m.selectedProject {
+					url = m.projects[m.selectedProject].URL
+				}
+			case 3:
+				if len(m.certifications) > m.selectedCert {
+					url = m.certifications[m.selectedCert].URL
+				}
+			case 4:
+				if len(m.contactItems) > m.selectedContact {
+					url = m.contactItems[m.selectedContact].URL
 				}
 			}
-			if m.selectedIndex == 3 && len(m.certifications) > m.selectedCert {
-				if url := m.certifications[m.selectedCert].URL; url != "" {
-					openURL(url)
-				}
+			if url != "" {
+				m.showingURL = url
 			}
 
 		case "1":
@@ -241,26 +282,31 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.contentScroll = 0
 			m.selectedProject = 0
 			m.selectedCert = 0
+			m.selectedContact = 0
 		case "2":
 			m.selectedIndex = 1
 			m.contentScroll = 0
 			m.selectedProject = 0
 			m.selectedCert = 0
+			m.selectedContact = 0
 		case "3":
 			m.selectedIndex = 2
 			m.contentScroll = 0
 			m.selectedProject = 0
 			m.selectedCert = 0
+			m.selectedContact = 0
 		case "4":
 			m.selectedIndex = 3
 			m.contentScroll = 0
 			m.selectedProject = 0
 			m.selectedCert = 0
+			m.selectedContact = 0
 		case "5":
 			m.selectedIndex = 4
 			m.contentScroll = 0
 			m.selectedProject = 0
 			m.selectedCert = 0
+			m.selectedContact = 0
 
 		case "up":
 			switch m.selectedIndex {
@@ -273,6 +319,10 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				if len(m.certifications) > 0 && m.selectedCert > 0 {
 					m.selectedCert--
 					m.contentScroll = m.scrollRenderedToShow(m.certRenderedOffsets[m.selectedCert], 0)
+				}
+			case 4:
+				if m.selectedContact > 0 {
+					m.selectedContact--
 				}
 			default:
 				if m.contentScroll > 0 {
@@ -293,6 +343,10 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					m.selectedCert++
 					m.contentScroll = m.scrollRenderedToShow(
 						m.certRenderedOffsets[m.selectedCert], m.certItemHeight(m.selectedCert))
+				}
+			case 4:
+				if m.selectedContact < len(m.contactItems)-1 {
+					m.selectedContact++
 				}
 			default:
 				maxScroll := m.getMaxContentScroll()
@@ -351,21 +405,17 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 func (m Model) certItemHeight(idx int) int {
-	// title(1) + date(1) + org(1) = 3, no URL line in body anymore
 	return 3
 }
 
 func (m Model) projectItemHeight(idx int) int {
-	h := 3 // title(rendered as 2) + desc = 3
+	h := 3
 	if idx >= 0 && idx < len(m.projects) && m.projects[idx].TechStack != "" {
 		h++
 	}
 	return h
 }
 
-// scrollRenderedToShow keeps contentScroll in rendered-line space.
-// itemHeight=0 → only ensure top of item is visible (used when going up).
-// itemHeight>0 → ensure full item block is visible (used when going down).
 func (m Model) scrollRenderedToShow(renderedStart, itemHeight int) int {
 	avail := m.availableContentHeight()
 	if itemHeight == 0 {
@@ -394,8 +444,6 @@ func (m Model) availableContentHeight() int {
 	return inner
 }
 
-// getMaxContentScroll returns max scroll in the correct unit space for each page.
-// Pages 2 and 3 use rendered-line space; others use body-line space.
 func (m Model) getMaxContentScroll() int {
 	avail := m.availableContentHeight()
 	switch m.selectedIndex {

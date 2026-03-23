@@ -2,42 +2,125 @@ package main
 
 import (
 	"fmt"
-	"os"
-	"os/exec"
 	"strings"
 
 	"github.com/charmbracelet/lipgloss"
 )
 
 func (m Model) View() string {
+	if m.windowWidth < 90 || m.windowHeight < 15 {
+		msg := "Terminal too small — please resize to at least 90×15"
+		return lipgloss.NewStyle().
+			Foreground(lipgloss.Color(neutral400)).
+			Padding(1, 2).
+			Render(msg)
+	}
+
 	sidebarWidth := 20
-	mainWidth := m.windowWidth - sidebarWidth - 6
+	mainWidth := m.windowWidth - sidebarWidth - 4
 	paneHeight := m.windowHeight - 3
 
 	sidebar := m.renderSidebar()
 	mainContent := m.renderMainContent(mainWidth)
 
-	sidePane := sidePaneStyle.Width(sidebarWidth).Height(paneHeight).Render(sidebar)
-	mainPane := mainPaneActiveStyle.Width(mainWidth).Height(paneHeight).Render(mainContent)
+	sidePane := m.styles.sidePaneStyle.Width(sidebarWidth).Height(paneHeight).Render(sidebar)
+	mainPane := m.styles.mainPaneActiveStyle.Width(mainWidth).Height(paneHeight).Render(mainContent)
 
 	topRow := lipgloss.JoinHorizontal(lipgloss.Top, sidePane, mainPane)
 	statusBar := m.renderStatusBar()
+	base := lipgloss.JoinVertical(lipgloss.Left, topRow, statusBar)
 
-	return lipgloss.JoinVertical(lipgloss.Left, topRow, statusBar)
+	if m.showingURL != "" {
+		return m.renderURLPopup(base)
+	}
+	return base
+}
+
+// renderURLPopup overlays a centered box with the URL on top of the base view.
+func (m Model) renderURLPopup(base string) string {
+	url := m.showingURL
+
+	// Clamp URL display width
+	maxURLWidth := m.windowWidth - 12
+	displayURL := url
+	if len(displayURL) > maxURLWidth {
+		displayURL = displayURL[:maxURLWidth-3] + "..."
+	}
+
+	popupWidth := len(displayURL) + 6
+	if popupWidth < 44 {
+		popupWidth = 44
+	}
+	if popupWidth > m.windowWidth-4 {
+		popupWidth = m.windowWidth - 4
+	}
+
+	popupStyle := lipgloss.NewStyle().
+		Border(lipgloss.RoundedBorder()).
+		BorderForeground(lipgloss.Color(primaryDefault)).
+		Background(lipgloss.Color(neutral800)).
+		Padding(1, 3).
+		Width(popupWidth)
+
+	content := m.styles.mutedStyle.Render("Open this link in your browser:") + "\n\n" +
+		m.styles.projectTitleStyle.Render(displayURL) + "\n\n" +
+		m.styles.dimStyle.Render("press any key to dismiss")
+
+	popup := popupStyle.Render(content)
+
+	// Center the popup
+	popupLines := strings.Split(popup, "\n")
+	popupH := len(popupLines)
+	popupW := lipgloss.Width(popup)
+
+	baseLines := strings.Split(base, "\n")
+	topPad := (m.windowHeight - popupH) / 2
+	leftPad := (m.windowWidth - popupW) / 2
+	if leftPad < 0 {
+		leftPad = 0
+	}
+	if topPad < 0 {
+		topPad = 0
+	}
+
+	prefix := strings.Repeat(" ", leftPad)
+	for i, pLine := range popupLines {
+		targetLine := topPad + i
+		if targetLine < len(baseLines) {
+			// Overlay popup line on top of base line
+			base_runes := []rune(baseLines[targetLine])
+			popup_runes := []rune(prefix + pLine)
+			// Pad base line if needed
+			for len(base_runes) < leftPad {
+				base_runes = append(base_runes, ' ')
+			}
+			// Replace characters in base with popup
+			result := make([]rune, len(base_runes))
+			copy(result, base_runes)
+			for j, r := range popup_runes {
+				if j < len(result) {
+					result[j] = r
+				}
+			}
+			baseLines[targetLine] = string(result)
+		}
+	}
+
+	return strings.Join(baseLines, "\n")
 }
 
 func (m Model) renderSidebar() string {
 	var sb strings.Builder
 
-	sb.WriteString(nameStyle.Render("Aman Sanoj") + "\n")
-	sb.WriteString(taglineStyle.Render("dev & student") + "\n\n")
+	sb.WriteString(m.styles.nameStyle.Render("Aman Sanoj") + "\n")
+	sb.WriteString(m.styles.taglineStyle.Render("dev & student") + "\n\n")
 
 	for i, item := range m.menuItems {
 		num := fmt.Sprintf("%d", i+1)
 		if i == m.selectedIndex {
-			sb.WriteString(activeItemStyle.Render(num+" "+item.title) + "\n")
+			sb.WriteString(m.styles.activeItemStyle.Render(num+" "+item.title) + "\n")
 		} else {
-			sb.WriteString(inactiveItemStyle.Render(num+" "+item.title) + "\n")
+			sb.WriteString(m.styles.inactiveItemStyle.Render(num+" "+item.title) + "\n")
 		}
 	}
 
@@ -46,12 +129,12 @@ func (m Model) renderSidebar() string {
 
 func (m Model) renderMainContent(mainWidth int) string {
 	if m.selectedIndex < 0 || m.selectedIndex >= len(m.pageContents) {
-		return contentStyle.Render("No content available")
+		return m.styles.contentStyle.Render("No content available")
 	}
 
 	page := m.pageContents[m.selectedIndex]
-	title := subtitleStyle.Render(m.menuItems[m.selectedIndex].title)
-	divider := dimStyle.Render(strings.Repeat("─", 44))
+	title := m.styles.subtitleStyle.Render(m.menuItems[m.selectedIndex].title)
+	divider := m.styles.dimStyle.Render(strings.Repeat("─", 44))
 
 	allLines := strings.Split(page.body, "\n")
 	avail := m.availableContentHeight()
@@ -75,15 +158,18 @@ func (m Model) renderMainContent(mainWidth int) string {
 		if len(m.projects) > 0 {
 			visibleContent = m.buildStyledProjectContent(allLines, scroll, avail, mainWidth)
 		} else {
-			visibleContent = contentStyle.Render(strings.Join(allLines, "\n"))
+			visibleContent = m.styles.contentStyle.Render(strings.Join(allLines, "\n"))
 		}
 
 	case 3:
 		if len(m.certifications) > 0 {
 			visibleContent = m.buildStyledCertContent(allLines, scroll, avail)
 		} else {
-			visibleContent = contentStyle.Render(strings.Join(allLines, "\n"))
+			visibleContent = m.styles.contentStyle.Render(strings.Join(allLines, "\n"))
 		}
+
+	case 4:
+		visibleContent = m.buildStyledContactContent(allLines)
 
 	default:
 		start := scroll
@@ -95,7 +181,7 @@ func (m Model) renderMainContent(mainWidth int) string {
 		for len(visible) < avail {
 			visible = append(visible, "")
 		}
-		visibleContent = contentStyle.Render(strings.Join(visible, "\n"))
+		visibleContent = m.styles.contentStyle.Render(strings.Join(visible, "\n"))
 	}
 
 	return title + "\n" + divider + "\n\n" + visibleContent
@@ -117,7 +203,7 @@ func (m Model) buildStyledAboutContent(lines []string, mainWidth int) string {
 		}
 
 		if isSectionHeader(line) {
-			result += sectionHeaderStyle.Render(trimmed) + "\n"
+			result += m.styles.sectionHeaderStyle.Render(trimmed) + "\n"
 			continue
 		}
 
@@ -128,21 +214,21 @@ func (m Model) buildStyledAboutContent(lines []string, mainWidth int) string {
 				if parenIdx != -1 {
 					name := rest[:parenIdx]
 					date := rest[parenIdx:]
-					result += bulletStyle.Render("▸ ") + contentStyle.Render(name) + mutedStyle.Render(date) + "\n"
+					result += m.styles.bulletStyle.Render("▸ ") + m.styles.contentStyle.Render(name) + m.styles.mutedStyle.Render(date) + "\n"
 					continue
 				}
 			}
-			result += bulletStyle.Render("▸ ") + contentStyle.Render(rest) + "\n"
+			result += m.styles.bulletStyle.Render("▸ ") + m.styles.contentStyle.Render(rest) + "\n"
 			continue
 		}
 
 		if strings.HasPrefix(line, "  ") {
 			if strings.Contains(trimmed, "–") && strings.Contains(trimmed, "(") {
-				result += mutedStyle.Render("  "+trimmed) + "\n"
+				result += m.styles.mutedStyle.Render("  "+trimmed) + "\n"
 			} else if strings.Contains(trimmed, "Team") || strings.Contains(trimmed, "Cadet") {
-				result += "  " + activeItemStyle.Render(trimmed) + "\n"
+				result += "  " + m.styles.activeItemStyle.Render(trimmed) + "\n"
 			} else {
-				result += "  " + contentStyle.Render(trimmed) + "\n"
+				result += "  " + m.styles.contentStyle.Render(trimmed) + "\n"
 			}
 			continue
 		}
@@ -153,16 +239,16 @@ func (m Model) buildStyledAboutContent(lines []string, mainWidth int) string {
 				name := parts[0]
 				bar := parts[1]
 				label := strings.Join(parts[2:], " ")
-				result += contentStyle.Render(fmt.Sprintf("%-10s", name)) +
-					contentStyle.Render(bar) +
-					mutedStyle.Render("  "+label) + "\n"
+				result += m.styles.contentStyle.Render(fmt.Sprintf("%-10s", name)) +
+					m.styles.contentStyle.Render(bar) +
+					m.styles.mutedStyle.Render("  "+label) + "\n"
 				continue
 			}
 		}
 
 		wrapped := wordWrap(trimmed, wrapWidth)
 		for _, wline := range wrapped {
-			result += contentStyle.Render(wline) + "\n"
+			result += m.styles.contentStyle.Render(wline) + "\n"
 		}
 	}
 
@@ -202,18 +288,18 @@ func (m Model) buildStyledProjectContent(allLines []string, scroll, avail, mainW
 				parts := strings.SplitN(line, " (", 2)
 				var indicator string
 				if idx == m.selectedProject {
-					indicator = activeItemStyle.Render("● ")
+					indicator = m.styles.activeItemStyle.Render("● ")
 				} else {
-					indicator = dimStyle.Render("○ ")
+					indicator = m.styles.dimStyle.Render("○ ")
 				}
-				result += indicator + projectTitleStyle.Render(parts[0]) + "\n"
+				result += indicator + m.styles.projectTitleStyle.Render(parts[0]) + "\n"
 				linesEmitted++
 			}
 			if dateRL >= scroll && linesEmitted < avail {
 				parts := strings.SplitN(line, " (", 2)
 				if len(parts) == 2 {
 					date := strings.TrimSuffix(parts[1], ")")
-					result += "  " + mutedStyle.Render(date) + "\n"
+					result += "  " + m.styles.mutedStyle.Render(date) + "\n"
 					linesEmitted++
 				}
 			}
@@ -234,9 +320,9 @@ func (m Model) buildStyledProjectContent(allLines []string, scroll, avail, mainW
 				tags := strings.Split(line, ",")
 				var styled []string
 				for _, tag := range tags {
-					styled = append(styled, activeItemStyle.Render(strings.TrimSpace(tag)))
+					styled = append(styled, m.styles.activeItemStyle.Render(strings.TrimSpace(tag)))
 				}
-				result += "  " + strings.Join(styled, dimStyle.Render(" · ")) + "\n"
+				result += "  " + strings.Join(styled, m.styles.dimStyle.Render(" · ")) + "\n"
 				linesEmitted++
 			}
 			renderedLine++
@@ -244,8 +330,14 @@ func (m Model) buildStyledProjectContent(allLines []string, scroll, avail, mainW
 		}
 
 		if renderedLine >= scroll && linesEmitted < avail {
-			result += contentStyle.Render("  "+trimmed) + "\n"
-			linesEmitted++
+			wrapped := wordWrap(trimmed, wrapWidth)
+			for _, wline := range wrapped {
+				if linesEmitted >= avail {
+					break
+				}
+				result += m.styles.contentStyle.Render("  "+wline) + "\n"
+				linesEmitted++
+			}
 		}
 		renderedLine++
 	}
@@ -282,14 +374,14 @@ func (m Model) buildStyledCertContent(allLines []string, scroll, avail int) stri
 
 			var indicator string
 			if idx == m.selectedCert {
-				indicator = activeItemStyle.Render("● ")
+				indicator = m.styles.activeItemStyle.Render("● ")
 			} else {
-				indicator = dimStyle.Render("○ ")
+				indicator = m.styles.dimStyle.Render("○ ")
 			}
 
-			linkIcon := dimStyle.Render(" ·")
+			linkIcon := m.styles.dimStyle.Render(" ·")
 			if idx < len(m.certifications) && m.certifications[idx].URL != "" {
-				linkIcon = mutedStyle.Render(" ↗")
+				linkIcon = m.styles.mutedStyle.Render(" ↗")
 			}
 
 			titleRL := renderedLine
@@ -297,12 +389,12 @@ func (m Model) buildStyledCertContent(allLines []string, scroll, avail int) stri
 			renderedLine += 2
 
 			if titleRL >= scroll && linesEmitted < avail {
-				result += indicator + projectTitleStyle.Render(title) + linkIcon + "\n"
+				result += indicator + m.styles.projectTitleStyle.Render(title) + linkIcon + "\n"
 				linesEmitted++
 			}
 			if dateRL >= scroll && linesEmitted < avail {
 				if date != "" {
-					result += "  " + mutedStyle.Render(date) + "\n"
+					result += "  " + m.styles.mutedStyle.Render(date) + "\n"
 				} else {
 					result += "\n"
 				}
@@ -314,7 +406,7 @@ func (m Model) buildStyledCertContent(allLines []string, scroll, avail int) stri
 		if strings.HasPrefix(trimmed, "ORG|||") {
 			if renderedLine >= scroll && linesEmitted < avail {
 				org := strings.TrimPrefix(trimmed, "ORG|||")
-				result += "  " + contentStyle.Render(org) + "\n"
+				result += "  " + m.styles.contentStyle.Render(org) + "\n"
 				linesEmitted++
 			}
 			renderedLine++
@@ -330,9 +422,8 @@ func (m Model) buildStyledCertContent(allLines []string, scroll, avail int) stri
 			continue
 		}
 
-		// anything else
 		if renderedLine >= scroll && linesEmitted < avail {
-			result += "  " + contentStyle.Render(trimmed) + "\n"
+			result += "  " + m.styles.contentStyle.Render(trimmed) + "\n"
 			linesEmitted++
 		}
 		renderedLine++
@@ -341,44 +432,93 @@ func (m Model) buildStyledCertContent(allLines []string, scroll, avail int) stri
 	return strings.TrimRight(result, "\n")
 }
 
+func (m Model) buildStyledContactContent(allLines []string) string {
+	var result string
+	idx := 0
+
+	for _, line := range allLines {
+		trimmed := strings.TrimSpace(line)
+
+		if trimmed == "" {
+			result += "\n"
+			continue
+		}
+
+		if strings.HasPrefix(trimmed, "CONTACT|||") {
+			parts := strings.SplitN(trimmed, "|||", 4)
+			label := ""
+			handle := ""
+			if len(parts) >= 2 {
+				label = parts[1]
+			}
+			if len(parts) >= 3 {
+				handle = parts[2]
+			}
+
+			var indicator string
+			if idx == m.selectedContact {
+				indicator = m.styles.activeItemStyle.Render("● ")
+			} else {
+				indicator = m.styles.dimStyle.Render("○ ")
+			}
+
+			result += indicator +
+				m.styles.mutedStyle.Render(fmt.Sprintf("%-10s", label)) +
+				m.styles.contentStyle.Render(handle) + "\n"
+			idx++
+			continue
+		}
+
+		result += m.styles.contentStyle.Render(trimmed) + "\n"
+	}
+
+	return strings.TrimRight(result, "\n")
+}
+
 func (m Model) renderStatusBar() string {
-	sep := statusSepStyle.Render("  │  ")
+	sep := m.styles.statusSepStyle.Render("  │  ")
 
 	hint := func(key, desc string) string {
-		return statusKeyStyle.Render(" "+key+" ") +
-			statusBarStyle.Render(" "+desc)
+		return m.styles.statusKeyStyle.Render(" "+key+" ") +
+			m.styles.statusBarStyle.Render(" "+desc)
 	}
 
 	var left string
 	switch m.selectedIndex {
 	case 2:
 		if len(m.projects) > 0 {
-			left = statusBarStyle.Render(" ") +
+			left = m.styles.statusBarStyle.Render(" ") +
 				hint("1-5", "navigate") + sep +
 				hint("↑/↓", "select") + sep +
 				hint("enter", "open") + sep +
 				hint("q", "quit")
 		} else {
-			left = statusBarStyle.Render(" ") +
+			left = m.styles.statusBarStyle.Render(" ") +
 				hint("1-5", "navigate") + sep +
 				hint("↑/↓", "scroll") + sep +
 				hint("q", "quit")
 		}
 	case 3:
 		if len(m.certifications) > 0 {
-			left = statusBarStyle.Render(" ") +
+			left = m.styles.statusBarStyle.Render(" ") +
 				hint("1-5", "navigate") + sep +
 				hint("↑/↓", "select") + sep +
 				hint("enter", "open") + sep +
 				hint("q", "quit")
 		} else {
-			left = statusBarStyle.Render(" ") +
+			left = m.styles.statusBarStyle.Render(" ") +
 				hint("1-5", "navigate") + sep +
 				hint("↑/↓", "scroll") + sep +
 				hint("q", "quit")
 		}
+	case 4:
+		left = m.styles.statusBarStyle.Render(" ") +
+			hint("1-5", "navigate") + sep +
+			hint("↑/↓", "select") + sep +
+			hint("enter", "open") + sep +
+			hint("q", "quit")
 	default:
-		left = statusBarStyle.Render(" ") +
+		left = m.styles.statusBarStyle.Render(" ") +
 			hint("1-5", "navigate") + sep +
 			hint("↑/↓", "scroll") + sep +
 			hint("q", "quit")
@@ -398,12 +538,12 @@ func (m Model) renderStatusBar() string {
 		if filled < 0 {
 			filled = 0
 		}
-		bar := statusScrollBarStyle.Render(strings.Repeat("█", filled)) +
-			statusScrollDimStyle.Render(strings.Repeat("░", 10-filled))
-		pctStr := statusScrollPctStyle.Render(fmt.Sprintf(" %3d%% ", pct))
+		bar := m.styles.statusScrollBarStyle.Render(strings.Repeat("█", filled)) +
+			m.styles.statusScrollDimStyle.Render(strings.Repeat("░", 10-filled))
+		pctStr := m.styles.statusScrollPctStyle.Render(fmt.Sprintf(" %3d%% ", pct))
 		right = bar + pctStr
 	} else {
-		right = statusBarStyle.Render("  ")
+		right = m.styles.statusBarStyle.Render("  ")
 	}
 
 	leftWidth := lipgloss.Width(left)
@@ -412,27 +552,7 @@ func (m Model) renderStatusBar() string {
 	if gap < 0 {
 		gap = 0
 	}
-	padding := statusBarStyle.Render(strings.Repeat(" ", gap))
+	padding := m.styles.statusBarStyle.Render(strings.Repeat(" ", gap))
 
 	return left + padding + right
-}
-
-func openURL(url string) {
-	var cmd *exec.Cmd
-	switch {
-	case os.Getenv("BROWSER") != "":
-		cmd = exec.Command(os.Getenv("BROWSER"), url)
-	case isCommandAvailable("xdg-open"):
-		cmd = exec.Command("xdg-open", url)
-	case isCommandAvailable("open"):
-		cmd = exec.Command("open", url)
-	}
-	if cmd != nil {
-		_ = cmd.Start()
-	}
-}
-
-func isCommandAvailable(name string) bool {
-	_, err := exec.LookPath(name)
-	return err == nil
 }

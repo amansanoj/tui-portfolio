@@ -7,10 +7,12 @@ import (
 	"io"
 	"net/http"
 	"os"
+	"time"
 )
 
 const notionDatabaseID = "32acb49d4dc9804ab1b5f3ccf42c375c"
 const notionAPIVersion = "2022-06-28"
+const notionRequestTimeout = 10 * time.Second
 
 type NotionPage struct {
 	ID         string                 `json:"id"`
@@ -49,8 +51,10 @@ func fetchProjectsFromNotion() []Project {
 	req.Header.Add("Content-Type", "application/json")
 
 	client := &http.Client{}
+	client.Timeout = notionRequestTimeout
 	resp, err := client.Do(req)
 	if err != nil {
+		fmt.Fprintf(os.Stderr, "notion projects request failed: %v\n", err)
 		return []Project{}
 	}
 	defer resp.Body.Close()
@@ -63,11 +67,13 @@ func fetchProjectsFromNotion() []Project {
 
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
+		fmt.Fprintf(os.Stderr, "notion projects response read failed: %v\n", err)
 		return []Project{}
 	}
 
 	var notionResp NotionResponse
 	if err := json.Unmarshal(body, &notionResp); err != nil {
+		fmt.Fprintf(os.Stderr, "notion projects response parse failed: %v\n", err)
 		return []Project{}
 	}
 
@@ -89,8 +95,16 @@ func fetchProjectsFromNotion() []Project {
 
 func extractStringProperty(props map[string]interface{}, propName string) string {
 	if prop, exists := props[propName]; exists {
-		propMap := prop.(map[string]interface{})
-		propType := propMap["type"].(string)
+		propMap, ok := prop.(map[string]interface{})
+		if !ok {
+			return ""
+		}
+
+		propType, ok := propMap["type"].(string)
+		if !ok {
+			return ""
+		}
+
 		switch propType {
 		case "title":
 			if titleArr, ok := propMap["title"].([]interface{}); ok && len(titleArr) > 0 {
@@ -115,7 +129,10 @@ func extractStringProperty(props map[string]interface{}, propName string) string
 
 func extractDateProperty(props map[string]interface{}, propName string) string {
 	if prop, exists := props[propName]; exists {
-		propMap := prop.(map[string]interface{})
+		propMap, ok := prop.(map[string]interface{})
+		if !ok {
+			return ""
+		}
 		if dateProp, ok := propMap["date"].(map[string]interface{}); ok {
 			if start, ok := dateProp["start"].(string); ok {
 				if end, ok := dateProp["end"].(string); ok {
@@ -130,7 +147,10 @@ func extractDateProperty(props map[string]interface{}, propName string) string {
 
 func extractURLProperty(props map[string]interface{}, propName string) string {
 	if prop, exists := props[propName]; exists {
-		propMap := prop.(map[string]interface{})
+		propMap, ok := prop.(map[string]interface{})
+		if !ok {
+			return ""
+		}
 		if url, ok := propMap["url"].(string); ok {
 			return url
 		}
@@ -164,19 +184,29 @@ func fetchCertificationsFromNotion() []Certification {
 	req.Header.Add("Content-Type", "application/json")
 
 	client := &http.Client{}
+	client.Timeout = notionRequestTimeout
 	resp, err := client.Do(req)
 	if err != nil {
+		fmt.Fprintf(os.Stderr, "notion certs request failed: %v\n", err)
 		return []Certification{}
 	}
 	defer resp.Body.Close()
 
+	if resp.StatusCode != http.StatusOK {
+		body, _ := io.ReadAll(resp.Body)
+		fmt.Fprintf(os.Stderr, "notion certs API error: %s\n", string(body))
+		return []Certification{}
+	}
+
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
+		fmt.Fprintf(os.Stderr, "notion certs response read failed: %v\n", err)
 		return []Certification{}
 	}
 
 	var notionResp NotionResponse
 	if err := json.Unmarshal(body, &notionResp); err != nil {
+		fmt.Fprintf(os.Stderr, "notion certs response parse failed: %v\n", err)
 		return []Certification{}
 	}
 

@@ -21,80 +21,104 @@ const (
 	neutral900 = "#191919"
 )
 
-var (
-	sidePaneStyle = lipgloss.NewStyle().
+type Styles struct {
+	sidePaneStyle        lipgloss.Style
+	mainPaneActiveStyle  lipgloss.Style
+	activeItemStyle      lipgloss.Style
+	inactiveItemStyle    lipgloss.Style
+	nameStyle            lipgloss.Style
+	taglineStyle         lipgloss.Style
+	subtitleStyle        lipgloss.Style
+	sectionHeaderStyle   lipgloss.Style
+	contentStyle         lipgloss.Style
+	mutedStyle           lipgloss.Style
+	dimStyle             lipgloss.Style
+	bulletStyle          lipgloss.Style
+	projectTitleStyle    lipgloss.Style
+	statusBarStyle       lipgloss.Style
+	statusKeyStyle       lipgloss.Style
+	statusSepStyle       lipgloss.Style
+	statusScrollBarStyle lipgloss.Style
+	statusScrollDimStyle lipgloss.Style
+	statusScrollPctStyle lipgloss.Style
+}
+
+func makeStyles(r *lipgloss.Renderer) Styles {
+	return Styles{
+		sidePaneStyle: r.NewStyle().
 			Border(lipgloss.RoundedBorder()).
 			BorderForeground(lipgloss.Color(neutral600)).
 			Foreground(lipgloss.Color(neutral100)).
-			Padding(1, 2)
+			Padding(1, 2),
 
-	mainPaneActiveStyle = lipgloss.NewStyle().
-				Border(lipgloss.RoundedBorder()).
-				BorderForeground(lipgloss.Color(primaryDefault)).
-				Foreground(lipgloss.Color(neutral100)).
-				Padding(1, 3)
-
-	activeItemStyle = lipgloss.NewStyle().
-			Foreground(lipgloss.Color(accentDefault)).
-			Bold(true)
-
-	inactiveItemStyle = lipgloss.NewStyle().
-				Foreground(lipgloss.Color(neutral600))
-
-	nameStyle = lipgloss.NewStyle().
+		mainPaneActiveStyle: r.NewStyle().
+			Border(lipgloss.RoundedBorder()).
+			BorderForeground(lipgloss.Color(primaryDefault)).
 			Foreground(lipgloss.Color(neutral100)).
-			Bold(true)
+			Padding(1, 3),
 
-	taglineStyle = lipgloss.NewStyle().
-			Foreground(lipgloss.Color(neutral400))
+		activeItemStyle: r.NewStyle().
+			Foreground(lipgloss.Color(accentDefault)).
+			Bold(true),
 
-	subtitleStyle = lipgloss.NewStyle().
+		inactiveItemStyle: r.NewStyle().
+			Foreground(lipgloss.Color(neutral600)),
+
+		nameStyle: r.NewStyle().
+			Foreground(lipgloss.Color(neutral100)).
+			Bold(true),
+
+		taglineStyle: r.NewStyle().
+			Foreground(lipgloss.Color(neutral400)),
+
+		subtitleStyle: r.NewStyle().
 			Foreground(lipgloss.Color(primaryLight)).
-			Bold(true)
+			Bold(true),
 
-	sectionHeaderStyle = lipgloss.NewStyle().
-				Foreground(lipgloss.Color(primaryLight)).
-				Bold(true)
+		sectionHeaderStyle: r.NewStyle().
+			Foreground(lipgloss.Color(primaryLight)).
+			Bold(true),
 
-	contentStyle = lipgloss.NewStyle().
-			Foreground(lipgloss.Color(neutral100))
+		contentStyle: r.NewStyle().
+			Foreground(lipgloss.Color(neutral100)),
 
-	mutedStyle = lipgloss.NewStyle().
-			Foreground(lipgloss.Color(neutral600))
+		mutedStyle: r.NewStyle().
+			Foreground(lipgloss.Color(neutral600)),
 
-	dimStyle = lipgloss.NewStyle().
-			Foreground(lipgloss.Color(neutral700))
+		dimStyle: r.NewStyle().
+			Foreground(lipgloss.Color(neutral700)),
 
-	bulletStyle = lipgloss.NewStyle().
-			Foreground(lipgloss.Color(accentDefault))
+		bulletStyle: r.NewStyle().
+			Foreground(lipgloss.Color(accentDefault)),
 
-	projectTitleStyle = lipgloss.NewStyle().
-				Foreground(lipgloss.Color(primaryLight)).
-				Bold(true)
+		projectTitleStyle: r.NewStyle().
+			Foreground(lipgloss.Color(primaryLight)).
+			Bold(true),
 
-	statusBarStyle = lipgloss.NewStyle().
+		statusBarStyle: r.NewStyle().
 			Background(lipgloss.Color(neutral800)).
-			Foreground(lipgloss.Color(neutral400))
+			Foreground(lipgloss.Color(neutral400)),
 
-	statusKeyStyle = lipgloss.NewStyle().
+		statusKeyStyle: r.NewStyle().
 			Background(lipgloss.Color(neutral700)).
 			Foreground(lipgloss.Color(neutral100)).
 			Padding(0, 1).
-			Bold(true)
+			Bold(true),
 
-	statusSepStyle = lipgloss.NewStyle().
+		statusSepStyle: r.NewStyle().
 			Background(lipgloss.Color(neutral800)).
-			Foreground(lipgloss.Color(neutral700))
+			Foreground(lipgloss.Color(neutral700)),
 
-	statusScrollBarStyle = lipgloss.NewStyle().
-				Background(lipgloss.Color(neutral800)).
-				Foreground(lipgloss.Color(primaryLight))
+		statusScrollBarStyle: r.NewStyle().
+			Background(lipgloss.Color(neutral800)).
+			Foreground(lipgloss.Color(primaryLight)),
 
-	statusScrollDimStyle = lipgloss.NewStyle().
-				Background(lipgloss.Color(neutral800)).
-				Foreground(lipgloss.Color(neutral700))
+		statusScrollDimStyle: r.NewStyle().
+			Background(lipgloss.Color(neutral800)).
+			Foreground(lipgloss.Color(neutral700)),
 
-	statusScrollPctStyle = lipgloss.NewStyle().
-				Background(lipgloss.Color(neutral800)).
-				Foreground(lipgloss.Color(neutral400))
-)
+		statusScrollPctStyle: r.NewStyle().
+			Background(lipgloss.Color(neutral800)).
+			Foreground(lipgloss.Color(neutral400)),
+	}
+}

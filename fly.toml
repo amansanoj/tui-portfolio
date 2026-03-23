@@ -1,0 +1,15 @@
+[build]
+
+app = "aman-portfolio"
+primary_region = "sin"
+
+[[mounts]]
+  source = "portfolio_data"
+  destination = "/data"
+
+[[services]]
+  protocol = "tcp"
+  internal_port = 22
+
+  [[services.ports]]
+    port = 22

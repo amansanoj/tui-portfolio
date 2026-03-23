@@ -1,0 +1,26 @@
+# Binary
+portfolio
+tui-portfolio
+
+# Local SSH host keys
+host_key
+host_key.pub
+
+# Environment variables
+.env
+
+# Go artifacts
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+*.test
+*.out
+vendor/
+
+# Editor
+.vscode/
+.idea/
+*.swp
+*.swo
