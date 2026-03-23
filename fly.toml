@@ -8,6 +8,10 @@ primary_region = 'bom'
 
 [build]
 
+[[mounts]]
+  source = 'portfolio_data'
+  destination = '/data'
+
 [[services]]
   protocol = 'tcp'
   internal_port = 22
@@ -20,7 +24,6 @@ primary_region = 'bom'
     port = 22
 
 [[vm]]
-  memory = '1gb'
   cpu_kind = 'shared'
   cpus = 1
   memory_mb = 256
