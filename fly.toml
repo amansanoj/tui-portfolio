@@ -1,15 +1,23 @@
+# fly.toml app configuration file generated for tui-portfolio-ahgpsa on 2026-03-23T14:49:38Z
+#
+# See https://fly.io/docs/reference/configuration/ for information about how to use this file.
+#
+
+app = 'tui-portfolio-ahgpsa'
+primary_region = 'bom'
+
 [build]
 
-app = "aman-portfolio"
-primary_region = "sin"
-
-[[mounts]]
-  source = "portfolio_data"
-  destination = "/data"
-
-[[services]]
-  protocol = "tcp"
+[http_service]
   internal_port = 22
+  force_https = true
+  auto_stop_machines = 'stop'
+  auto_start_machines = true
+  min_machines_running = 0
+  processes = ['app']
 
-  [[services.ports]]
-    port = 22
+[[vm]]
+  memory = '1gb'
+  cpu_kind = 'shared'
+  cpus = 1
+  memory_mb = 256
