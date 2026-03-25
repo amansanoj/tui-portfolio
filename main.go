@@ -79,19 +79,8 @@ func loadConfig() appConfig {
 	}
 }
 
-func ensureHostKeyExists(path string) error {
-	if _, err := os.Stat(path); err != nil {
-		return fmt.Errorf("host key path %q is not accessible: %w", path, err)
-	}
-	return nil
-}
-
 func main() {
 	cfg := loadConfig()
-	if err := ensureHostKeyExists(cfg.hostKeyPath); err != nil {
-		fmt.Fprintf(os.Stderr, "configuration error: %v\n", err)
-		os.Exit(1)
-	}
 
 	s, err := wish.NewServer(
 		wish.WithAddress(cfg.address),
