@@ -21,17 +21,17 @@ Add a screenshot or GIF here.
 
 ## Project Structure
 
-- `main.go`: SSH server bootstrap (Wish), middleware, graceful shutdown, session program setup.
-- `model.go`: Bubble Tea model, app state, update loop, page navigation, scrolling logic.
-- `views.go`: All UI rendering for sidebar, content pages, status bar, and URL popup.
-- `styles.go`: Lip Gloss style definitions and color tokens.
-- `notion.go`: Notion API client and parsers for projects and certifications.
-- `go.mod`: Go module and direct dependencies.
-- `go.sum`: Dependency checksums.
-- `Dockerfile`: Multi-stage container build for deployment.
-- `fly.toml`: fly.io app and service configuration.
-- `.gitignore`: Excludes local secrets, host keys, binaries, and editor artifacts.
-- `.env.example`: Environment variable template.
+- `main.go`: Application entry point. Configures and launches the SSH server using the Wish framework.
+- `model.go`: Core state management. Defines the Bubble Tea model, application initialization, and update loops.
+- `views.go`: User interface rendering. Handles the layout for all UI elements including the sidebar, content pages, and status bar.
+- `styles.go`: Application styling. Contains the LipGloss design definitions and color themes.
+- `notion.go`: API integration. Manages fetching and parsing data from the Notion API.
+- `go.mod`: Go module definition and direct dependencies.
+- `go.sum`: Go dependency checksums and lock file.
+- `Dockerfile`: Container configuration for multi-stage application builds.
+- `fly.toml`: Deployment configuration for the fly.io platform.
+- `.gitignore`: Version control exclusions for secrets and local artifacts.
+- `.env.example`: Template outlining required environment variables.
 
 ## Local Development
 
@@ -87,7 +87,7 @@ fly auth login
 2. Create the app (one-time):
 
 ```bash
-fly apps create aman-portfolio
+fly apps create tui-portfolio
 ```
 
 3. Create a persistent volume for the SSH host key:
