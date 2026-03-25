@@ -22,8 +22,11 @@ const (
 	defaultHostKeyPath          = "/data/host_key"
 	defaultSSHAddress           = "0.0.0.0:22"
 	defaultShutdownTimeout      = 30 * time.Second
+	defaultContentWarmTimeout   = 1500 * time.Millisecond
+	defaultContentRefresh       = 5 * time.Minute
 	shutdownWaitForServeErr     = 2 * time.Second
 	shutdownTimeoutEnvVar       = "SHUTDOWN_TIMEOUT_SECONDS"
+	contentRefreshEnvVar        = "NOTION_REFRESH_SECONDS"
 	defaultShutdownTimeoutValue = "30"
 )
 
@@ -31,6 +34,7 @@ type appConfig struct {
 	address         string
 	hostKeyPath     string
 	shutdownTimeout time.Duration
+	refreshInterval time.Duration
 }
 
 func loadConfig() appConfig {
@@ -49,6 +53,17 @@ func loadConfig() appConfig {
 	if value == "" {
 		value = defaultShutdownTimeoutValue
 	}
+
+	refreshInterval := defaultContentRefresh
+	refreshValue := os.Getenv(contentRefreshEnvVar)
+	if refreshValue != "" {
+		seconds, err := strconv.Atoi(refreshValue)
+		if err != nil || seconds <= 0 {
+			fmt.Fprintf(os.Stderr, "%s must be a positive integer, got %q. Falling back to %d seconds.\n", contentRefreshEnvVar, refreshValue, int(defaultContentRefresh/time.Second))
+		} else {
+			refreshInterval = time.Duration(seconds) * time.Second
+		}
+	}
 	seconds, err := strconv.Atoi(value)
 	if err != nil || seconds <= 0 {
 		fmt.Fprintf(os.Stderr, "%s must be a positive integer, got %q. Falling back to %s seconds.\n", shutdownTimeoutEnvVar, value, defaultShutdownTimeoutValue)
@@ -60,6 +75,7 @@ func loadConfig() appConfig {
 		address:         addr,
 		hostKeyPath:     hostKeyPath,
 		shutdownTimeout: shutdownTimeout,
+		refreshInterval: refreshInterval,
 	}
 }
 
@@ -90,6 +106,12 @@ func main() {
 		fmt.Fprintf(os.Stderr, "could not create server: %v\n", err)
 		os.Exit(1)
 	}
+
+	appCtx, cancelApp := context.WithCancel(context.Background())
+	defer cancelApp()
+
+	appContentStore.WarmUp(defaultContentWarmTimeout)
+	appContentStore.StartAutoRefresh(appCtx, cfg.refreshInterval)
 
 	serveErr := make(chan error, 1)
 	go func() {

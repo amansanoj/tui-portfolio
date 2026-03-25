@@ -1,0 +1,12 @@
+.git
+.gitignore
+.env
+.env.*
+host_key
+host_key.pub
+portfolio
+tui-portfolio
+*.test
+*.out
+.vscode
+.idea

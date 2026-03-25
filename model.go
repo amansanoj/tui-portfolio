@@ -63,11 +63,31 @@ func buildContactBody(items []ContactItem) string {
 }
 
 func NewModel(renderer *lipgloss.Renderer) Model {
-	notionProjects := fetchProjectsFromNotion()
-	notionCerts := fetchCertificationsFromNotion()
+	snapshot := appContentStore.Snapshot()
+	notionProjects := snapshot.Projects
+	notionCerts := snapshot.Certifications
 
-	projectsContent, projBodyOffsets, projRenderedOffsets, projRenderedTotal := buildProjectsBody(notionProjects)
-	certsContent, certBodyOffsets, certRenderedOffsets, certRenderedTotal := buildCertsBody(notionCerts)
+	var projectsContent string
+	var projBodyOffsets, projRenderedOffsets []int
+	var projRenderedTotal int
+	if snapshot.Ready {
+		projectsContent, projBodyOffsets, projRenderedOffsets, projRenderedTotal = buildProjectsBody(notionProjects)
+	} else {
+		projectsContent = "Loading projects..."
+		projRenderedTotal = 1
+		go appContentStore.Refresh()
+	}
+
+	var certsContent string
+	var certBodyOffsets, certRenderedOffsets []int
+	var certRenderedTotal int
+	if snapshot.Ready {
+		certsContent, certBodyOffsets, certRenderedOffsets, certRenderedTotal = buildCertsBody(notionCerts)
+	} else {
+		certsContent = "Loading certifications..."
+		certRenderedTotal = 1
+	}
+
 	contactItems := defaultContactItems
 	contactBody := buildContactBody(contactItems)
 
@@ -92,6 +112,7 @@ func NewModel(renderer *lipgloss.Renderer) Model {
 			{title: "Projects"},
 			{title: "Certs"},
 			{title: "Contact"},
+			{title: "Status"},
 		},
 		pageContents: []pageContent{
 			{
@@ -115,7 +136,8 @@ func NewModel(renderer *lipgloss.Renderer) Model {
  2 About     — my story, skills & education
  3 Projects  — things I've shipped
  4 Certs     — certifications I've earned
- 5 Contact   — get in touch`,
+ 5 Contact   — get in touch
+ 6 Status    — runtime & cache health`,
 			},
 			{
 				body: `Hey, I'm Aman — a developer and student who enjoys
@@ -157,6 +179,7 @@ French    ████░░░░░░░░  Basic`,
 			{body: projectsContent},
 			{body: certsContent},
 			{body: contactBody},
+			{body: ""},
 		},
 		windowWidth:  120,
 		windowHeight: 30,
@@ -301,6 +324,12 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.selectedContact = 0
 		case "5":
 			m.selectedIndex = 4
+			m.contentScroll = 0
+			m.selectedProject = 0
+			m.selectedCert = 0
+			m.selectedContact = 0
+		case "6":
+			m.selectedIndex = 5
 			m.contentScroll = 0
 			m.selectedProject = 0
 			m.selectedCert = 0

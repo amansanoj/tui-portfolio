@@ -126,59 +126,22 @@ func (m Model) renderMainContent(mainWidth int) string {
 	var visibleContent string
 	switch m.selectedIndex {
 	case 1:
-		start := scroll
-		end := scroll + avail
-		if end > len(allLines) {
-			end = len(allLines)
-		}
-		visible := allLines[start:end]
-		for len(visible) < avail {
-			visible = append(visible, "")
-		}
-		visibleContent = m.buildStyledAboutContent(visible, mainWidth)
+		visibleContent = m.renderAboutPage(allLines, scroll, avail, mainWidth)
 
 	case 2:
-		if len(m.projects) > 0 {
-			visibleContent = m.buildStyledProjectContent(allLines, scroll, avail, mainWidth)
-		} else {
-			visibleContent = m.styles.contentStyle.Render(strings.Join(allLines, "\n"))
-		}
+		visibleContent = m.renderProjectsPage(allLines, scroll, avail, mainWidth)
 
 	case 3:
-		if len(m.certifications) > 0 {
-			visibleContent = m.buildStyledCertContent(allLines, scroll, avail)
-		} else {
-			visibleContent = m.styles.contentStyle.Render(strings.Join(allLines, "\n"))
-		}
+		visibleContent = m.renderCertsPage(allLines, scroll, avail)
 
 	case 4:
-		visibleContent = m.buildStyledContactContent(allLines)
+		visibleContent = m.renderContactPage(allLines)
+
+	case 5:
+		visibleContent = m.renderRuntimeStatus(mainWidth)
 
 	default:
-		start := scroll
-		end := scroll + avail
-		if end > len(allLines) {
-			end = len(allLines)
-		}
-		visible := allLines[start:end]
-		for len(visible) < avail {
-			visible = append(visible, "")
-		}
-
-		var styledLines []string
-		for _, line := range visible {
-			if strings.Contains(line, "▸") {
-				parts := strings.Split(line, "▸")
-				styledLine := m.styles.contentStyle.Render(parts[0])
-				for i := 1; i < len(parts); i++ {
-					styledLine += m.styles.bulletStyle.Render("▸") + m.styles.contentStyle.Render(parts[i])
-				}
-				styledLines = append(styledLines, styledLine)
-			} else {
-				styledLines = append(styledLines, m.styles.contentStyle.Render(line))
-			}
-		}
-		visibleContent = strings.Join(styledLines, "\n")
+		visibleContent = m.renderDefaultPage(allLines, scroll, avail)
 	}
 
 	return title + "\n" + divider + "\n\n" + visibleContent
@@ -492,38 +455,38 @@ func (m Model) renderStatusBar() string {
 	case 2:
 		if len(m.projects) > 0 {
 			left = m.styles.statusBarStyle.Render(" ") +
-				hint("1-5", "navigate") + sep +
+				hint("1-6", "navigate") + sep +
 				hint("↑/↓", "select") + sep +
 				hint("enter", "open") + sep +
 				hint("q", "quit")
 		} else {
 			left = m.styles.statusBarStyle.Render(" ") +
-				hint("1-5", "navigate") + sep +
+				hint("1-6", "navigate") + sep +
 				hint("↑/↓", "scroll") + sep +
 				hint("q", "quit")
 		}
 	case 3:
 		if len(m.certifications) > 0 {
 			left = m.styles.statusBarStyle.Render(" ") +
-				hint("1-5", "navigate") + sep +
+				hint("1-6", "navigate") + sep +
 				hint("↑/↓", "select") + sep +
 				hint("enter", "open") + sep +
 				hint("q", "quit")
 		} else {
 			left = m.styles.statusBarStyle.Render(" ") +
-				hint("1-5", "navigate") + sep +
+				hint("1-6", "navigate") + sep +
 				hint("↑/↓", "scroll") + sep +
 				hint("q", "quit")
 		}
 	case 4:
 		left = m.styles.statusBarStyle.Render(" ") +
-			hint("1-5", "navigate") + sep +
+			hint("1-6", "navigate") + sep +
 			hint("↑/↓", "select") + sep +
 			hint("enter", "open") + sep +
 			hint("q", "quit")
 	default:
 		left = m.styles.statusBarStyle.Render(" ") +
-			hint("1-5", "navigate") + sep +
+			hint("1-6", "navigate") + sep +
 			hint("↑/↓", "scroll") + sep +
 			hint("q", "quit")
 	}

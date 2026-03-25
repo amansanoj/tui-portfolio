@@ -79,6 +79,7 @@ If port 22 is unavailable on your machine, run the app in a container or map a d
 | `SHUTDOWN_TIMEOUT_SECONDS` | No | `30` | Graceful shutdown timeout in seconds. Must be a positive integer. |
 | `NOTION_PROJECTS_DB_ID` | No | built-in default | Notion database ID used for projects. |
 | `NOTION_CERTS_DB_ID` | No | built-in default | Notion database ID used for certifications. |
+| `NOTION_REFRESH_SECONDS` | No | `300` | Background refresh interval for Notion data in seconds. Must be a positive integer. |
 
 ## Deploy to fly.io
 
@@ -109,7 +110,7 @@ fly secrets set NOTION_API_KEY=your_notion_api_key
 5. Deploy:
 
 ```bash
-fly deploy
+fly deploy --remote-only
 ```
 
 6. Test:
