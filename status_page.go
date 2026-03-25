@@ -7,7 +7,15 @@ import (
 	"time"
 )
 
-func (m Model) renderRuntimeStatus(mainWidth int) string {
+func (m Model) statusPageWrapWidth(mainWidth int) int {
+	wrapWidth := mainWidth - 2 - 2 - 2
+	if wrapWidth < 30 {
+		wrapWidth = 30
+	}
+	return wrapWidth
+}
+
+func (m Model) statusPageRawLines() []string {
 	snapshot := appContentStore.Snapshot()
 	refreshValue := os.Getenv(contentRefreshEnvVar)
 	if refreshValue == "" {
@@ -33,7 +41,7 @@ func (m Model) renderRuntimeStatus(mainWidth int) string {
 		refreshing = "yes"
 	}
 
-	lines := []string{
+	return []string{
 		"Runtime Status",
 		"",
 		fmt.Sprintf("Cache state        : %s", cacheState),
@@ -47,25 +55,59 @@ func (m Model) renderRuntimeStatus(mainWidth int) string {
 		fmt.Sprintf("Listen address     : %s", envWithDefault("APP_ADDR", defaultSSHAddress)),
 		fmt.Sprintf("Host key path      : %s", envWithDefault("HOST_KEY_PATH", defaultHostKeyPath)),
 	}
+}
 
-	wrapWidth := mainWidth - 2 - 2 - 2
-	if wrapWidth < 30 {
-		wrapWidth = 30
+func (m Model) statusPageLineCount(mainWidth int) int {
+	raw := m.statusPageRawLines()
+	wrapWidth := m.statusPageWrapWidth(mainWidth)
+	total := 0
+
+	for _, line := range raw {
+		if line == "" {
+			total++
+			continue
+		}
+		wrapped := wordWrap(line, wrapWidth)
+		if len(wrapped) == 0 {
+			total++
+			continue
+		}
+		total += len(wrapped)
 	}
 
+	return total
+}
+
+func (m Model) renderRuntimeStatus(mainWidth, scroll, avail int) string {
+	raw := m.statusPageRawLines()
+	wrapWidth := m.statusPageWrapWidth(mainWidth)
+
+	var expanded []string
+	for _, line := range raw {
+		if line == "" {
+			expanded = append(expanded, "")
+			continue
+		}
+		wrapped := wordWrap(line, wrapWidth)
+		if len(wrapped) == 0 {
+			expanded = append(expanded, "")
+			continue
+		}
+		expanded = append(expanded, wrapped...)
+	}
+
+	visible := m.clampVisibleLines(expanded, scroll, avail)
+
 	var out []string
-	for i, line := range lines {
+	for i, line := range visible {
 		if line == "" {
 			out = append(out, "")
 			continue
 		}
-		wrapped := wordWrap(line, wrapWidth)
-		for _, w := range wrapped {
-			if i == 0 {
-				out = append(out, m.styles.sectionHeaderStyle.Render(w))
-			} else {
-				out = append(out, m.styles.contentStyle.Render(w))
-			}
+		if i == 0 && scroll == 0 {
+			out = append(out, m.styles.sectionHeaderStyle.Render(line))
+		} else {
+			out = append(out, m.styles.contentStyle.Render(line))
 		}
 	}
 

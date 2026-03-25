@@ -138,7 +138,7 @@ func (m Model) renderMainContent(mainWidth int) string {
 		visibleContent = m.renderContactPage(allLines)
 
 	case 5:
-		visibleContent = m.renderRuntimeStatus(mainWidth)
+		visibleContent = m.renderRuntimeStatus(mainWidth, scroll, avail)
 
 	default:
 		visibleContent = m.renderDefaultPage(allLines, scroll, avail)

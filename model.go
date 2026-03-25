@@ -514,6 +514,14 @@ func (m Model) getMaxContentScroll() int {
 			max = 0
 		}
 		return max
+	case 5:
+		mainWidth := m.windowWidth - 20 - 4
+		lines := m.statusPageLineCount(mainWidth)
+		max := lines - avail
+		if max < 0 {
+			max = 0
+		}
+		return max
 	default:
 		if m.selectedIndex < 0 || m.selectedIndex >= len(m.pageContents) {
 			return 0
