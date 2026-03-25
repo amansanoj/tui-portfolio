@@ -311,7 +311,8 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			case 2:
 				if len(m.projects) > 0 && m.selectedProject > 0 {
 					m.selectedProject--
-					m.contentScroll = m.scrollRenderedToShow(m.projectRenderedOffsets[m.selectedProject], 0)
+					projectOffsets, _ := m.projectRenderedMetrics()
+					m.contentScroll = m.scrollRenderedToShow(projectOffsets[m.selectedProject], 0)
 				}
 			case 3:
 				if len(m.certifications) > 0 && m.selectedCert > 0 {
@@ -333,8 +334,9 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			case 2:
 				if len(m.projects) > 0 && m.selectedProject < len(m.projects)-1 {
 					m.selectedProject++
+					projectOffsets, _ := m.projectRenderedMetrics()
 					m.contentScroll = m.scrollRenderedToShow(
-						m.projectRenderedOffsets[m.selectedProject], m.projectItemHeight(m.selectedProject))
+						projectOffsets[m.selectedProject], m.projectItemHeight(m.selectedProject))
 				}
 			case 3:
 				if len(m.certifications) > 0 && m.selectedCert < len(m.certifications)-1 {
@@ -359,8 +361,9 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				for i := 0; i < 5 && m.selectedProject < len(m.projects)-1; i++ {
 					m.selectedProject++
 				}
+				projectOffsets, _ := m.projectRenderedMetrics()
 				m.contentScroll = m.scrollRenderedToShow(
-					m.projectRenderedOffsets[m.selectedProject], m.projectItemHeight(m.selectedProject))
+					projectOffsets[m.selectedProject], m.projectItemHeight(m.selectedProject))
 			case 3:
 				for i := 0; i < 5 && m.selectedCert < len(m.certifications)-1; i++ {
 					m.selectedCert++
@@ -381,7 +384,8 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				for i := 0; i < 5 && m.selectedProject > 0; i++ {
 					m.selectedProject--
 				}
-				m.contentScroll = m.scrollRenderedToShow(m.projectRenderedOffsets[m.selectedProject], 0)
+				projectOffsets, _ := m.projectRenderedMetrics()
+				m.contentScroll = m.scrollRenderedToShow(projectOffsets[m.selectedProject], 0)
 			case 3:
 				for i := 0; i < 5 && m.selectedCert > 0; i++ {
 					m.selectedCert--
@@ -407,11 +411,16 @@ func (m Model) certItemHeight(idx int) int {
 }
 
 func (m Model) projectItemHeight(idx int) int {
-	h := 3
-	if idx >= 0 && idx < len(m.projects) && m.projects[idx].TechStack != "" {
-		h++
+	offsets, total := m.projectRenderedMetrics()
+	if idx < 0 || idx >= len(offsets) {
+		return 0
 	}
-	return h
+	start := offsets[idx]
+	end := total
+	if idx+1 < len(offsets) {
+		end = offsets[idx+1]
+	}
+	return end - start
 }
 
 func (m Model) scrollRenderedToShow(renderedStart, itemHeight int) int {
@@ -446,7 +455,8 @@ func (m Model) getMaxContentScroll() int {
 	avail := m.availableContentHeight()
 	switch m.selectedIndex {
 	case 2:
-		max := m.projectRenderedTotal - avail
+		_, total := m.projectRenderedMetrics()
+		max := total - avail
 		if max < 0 {
 			max = 0
 		}
@@ -468,6 +478,58 @@ func (m Model) getMaxContentScroll() int {
 		}
 		return max
 	}
+}
+
+func (m Model) projectWrapWidth() int {
+	mainWidth := m.windowWidth - 20 - 4
+	wrapWidth := mainWidth - 3 - 3 - 2
+	if wrapWidth < 40 {
+		wrapWidth = 40
+	}
+	return wrapWidth
+}
+
+func (m Model) projectRenderedMetrics() ([]int, int) {
+	if len(m.projects) == 0 {
+		return nil, 0
+	}
+
+	wrapWidth := m.projectWrapWidth()
+	offsets := make([]int, len(m.projects))
+	renderedLine := 0
+
+	for i, proj := range m.projects {
+		offsets[i] = renderedLine
+
+		// Title and date are always rendered on two lines.
+		renderedLine += 2
+
+		desc := strings.TrimSpace(proj.Description)
+		if desc == "" {
+			renderedLine++
+		} else {
+			renderedLine += len(wordWrap(desc, wrapWidth))
+		}
+
+		if proj.TechStack != "" {
+			if strings.Contains(proj.TechStack, ",") && !strings.Contains(proj.TechStack, ", ") {
+				renderedLine++
+			} else {
+				tech := strings.TrimSpace(proj.TechStack)
+				if tech == "" {
+					renderedLine++
+				} else {
+					renderedLine += len(wordWrap(tech, wrapWidth))
+				}
+			}
+		}
+
+		if i < len(m.projects)-1 {
+			renderedLine++
+		}
+	}
+
+	return offsets, renderedLine
 }
 
 func formatDateRange(dateStr string) string {

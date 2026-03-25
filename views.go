@@ -160,7 +160,21 @@ func (m Model) renderMainContent(mainWidth int) string {
 		for len(visible) < avail {
 			visible = append(visible, "")
 		}
-		visibleContent = m.styles.contentStyle.Render(strings.Join(visible, "\n"))
+
+		var styledLines []string
+		for _, line := range visible {
+			if strings.Contains(line, "▸") {
+				parts := strings.Split(line, "▸")
+				styledLine := m.styles.contentStyle.Render(parts[0])
+				for i := 1; i < len(parts); i++ {
+					styledLine += m.styles.bulletStyle.Render("▸") + m.styles.contentStyle.Render(parts[i])
+				}
+				styledLines = append(styledLines, styledLine)
+			} else {
+				styledLines = append(styledLines, m.styles.contentStyle.Render(line))
+			}
+		}
+		visibleContent = strings.Join(styledLines, "\n")
 	}
 
 	return title + "\n" + divider + "\n\n" + visibleContent
@@ -227,7 +241,16 @@ func (m Model) buildStyledAboutContent(lines []string, mainWidth int) string {
 
 		wrapped := wordWrap(trimmed, wrapWidth)
 		for _, wline := range wrapped {
-			result += m.styles.contentStyle.Render(wline) + "\n"
+			if strings.Contains(wline, "▸") {
+				parts := strings.Split(wline, "▸")
+				styledLine := m.styles.contentStyle.Render(parts[0])
+				for i := 1; i < len(parts); i++ {
+					styledLine += m.styles.bulletStyle.Render("▸") + m.styles.contentStyle.Render(parts[i])
+				}
+				result += styledLine + "\n"
+			} else {
+				result += m.styles.contentStyle.Render(wline) + "\n"
+			}
 		}
 	}
 
