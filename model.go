@@ -139,7 +139,7 @@ Brand Management • Ethical AI Governance
 Education
 ▸ GEMS Our Own Indian School (Apr 2024–Mar 2026)
   Senior School Certificate (CBSE)
-  Physics, Chemistry, Math, CS, English
+  Physics, Chemistry, Math, Computer Science, English
   Grade: 83.4% (Predicted) | Dubai
   Innovation and Coding Team
 
