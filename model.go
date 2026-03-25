@@ -500,7 +500,7 @@ func (m Model) getMaxContentScroll() int {
 
 func (m Model) projectWrapWidth() int {
 	mainWidth := m.windowWidth - 20 - 4
-	wrapWidth := mainWidth - 3 - 3 - 2
+	wrapWidth := mainWidth - 2 - 2 - 2
 	if wrapWidth < 40 {
 		wrapWidth = 40
 	}

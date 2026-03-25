@@ -55,7 +55,7 @@ func makeStyles(r *lipgloss.Renderer) Styles {
 			Border(lipgloss.RoundedBorder()).
 			BorderForeground(lipgloss.Color(primaryDefault)).
 			Foreground(lipgloss.Color(neutral100)).
-			Padding(1, 3),
+			Padding(1, 2),
 
 		activeItemStyle: r.NewStyle().
 			Foreground(lipgloss.Color(accentDefault)).

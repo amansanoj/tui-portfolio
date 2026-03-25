@@ -113,7 +113,7 @@ func (m Model) renderMainContent(mainWidth int) string {
 
 	page := m.pageContents[m.selectedIndex]
 	title := m.styles.subtitleStyle.Render(m.menuItems[m.selectedIndex].title)
-	dividerWidth := mainWidth - 6
+	dividerWidth := mainWidth - 4
 	if dividerWidth < 1 {
 		dividerWidth = 1
 	}
@@ -186,7 +186,7 @@ func (m Model) renderMainContent(mainWidth int) string {
 
 func (m Model) buildStyledAboutContent(lines []string, mainWidth int) string {
 	var result string
-	wrapWidth := mainWidth - 3 - 3 - 2
+	wrapWidth := mainWidth - 2 - 2 - 2
 	if wrapWidth < 40 {
 		wrapWidth = 40
 	}
@@ -267,7 +267,7 @@ func (m Model) buildStyledProjectContent(allLines []string, scroll, avail, mainW
 	projectIndex := 0
 	renderedLine := 0
 
-	wrapWidth := mainWidth - 3 - 3 - 2
+	wrapWidth := mainWidth - 2 - 2 - 2
 	if wrapWidth < 40 {
 		wrapWidth = 40
 	}
