@@ -2,10 +2,25 @@ package main
 
 import (
 	"fmt"
+	"os"
 	"strings"
+	"time"
 
+	"github.com/amansanoj/tui-portfolio/pages"
 	"github.com/charmbracelet/lipgloss"
 )
+
+func (m Model) pageTheme() pages.Theme {
+	return pages.Theme{
+		SectionHeader: func(s string) string { return m.styles.sectionHeaderStyle.Render(s) },
+		Bullet:        func(s string) string { return m.styles.bulletStyle.Render(s) },
+		Content:       func(s string) string { return m.styles.contentStyle.Render(s) },
+		Muted:         func(s string) string { return m.styles.mutedStyle.Render(s) },
+		Active:        func(s string) string { return m.styles.activeItemStyle.Render(s) },
+		Dim:           func(s string) string { return m.styles.dimStyle.Render(s) },
+		ProjectTitle:  func(s string) string { return m.styles.projectTitleStyle.Render(s) },
+	}
+}
 
 func (m Model) View() string {
 	if m.windowWidth < 90 || m.windowHeight < 15 {
@@ -36,7 +51,6 @@ func (m Model) View() string {
 	return base
 }
 
-// renderURLPopup overlays a centered box with the URL on top of the base view.
 func (m Model) renderURLPopup() string {
 	url := m.showingURL
 
@@ -45,7 +59,6 @@ func (m Model) renderURLPopup() string {
 		maxURLWidth = 20
 	}
 
-	// Wrap URL across lines so it stays copyable
 	var urlLines []string
 	for len(url) > maxURLWidth {
 		urlLines = append(urlLines, url[:maxURLWidth])
@@ -106,6 +119,52 @@ func (m Model) renderSidebar() string {
 	return sb.String()
 }
 
+func (m Model) statusPageRawLines() []string {
+	snapshot := appContentStore.Snapshot()
+	refreshValue := os.Getenv(contentRefreshEnvVar)
+	if refreshValue == "" {
+		refreshValue = "300"
+	}
+
+	cacheState := "warm"
+	cacheAge := "unknown"
+	lastLoaded := "not loaded yet"
+	if !snapshot.Ready {
+		cacheState = "cold"
+	} else {
+		age := time.Since(snapshot.LoadedAt)
+		if age < 0 {
+			age = 0
+		}
+		cacheAge = age.Round(time.Second).String()
+		lastLoaded = snapshot.LoadedAt.Local().Format(time.RFC1123)
+	}
+
+	return pages.BuildStatusLines(pages.StatusData{
+		CacheState:          cacheState,
+		Refreshing:          snapshot.Refreshing,
+		CacheAge:            cacheAge,
+		LastLoaded:          lastLoaded,
+		ProjectsCount:       len(snapshot.Projects),
+		CertificationsCount: len(snapshot.Certifications),
+		RefreshInterval:     refreshValue + "s",
+		ListenAddress:       envWithDefault("APP_ADDR", defaultSSHAddress),
+		HostKeyPath:         envWithDefault("HOST_KEY_PATH", defaultHostKeyPath),
+	})
+}
+
+func (m Model) statusPageLineCount(mainWidth int) int {
+	return pages.StatusLineCount(m.statusPageRawLines(), mainWidth)
+}
+
+func envWithDefault(name, fallback string) string {
+	value := strings.TrimSpace(os.Getenv(name))
+	if value == "" {
+		return fallback
+	}
+	return value
+}
+
 func (m Model) renderMainContent(mainWidth int) string {
 	if m.selectedIndex < 0 || m.selectedIndex >= len(m.pageContents) {
 		return m.styles.contentStyle.Render("No content available")
@@ -122,324 +181,33 @@ func (m Model) renderMainContent(mainWidth int) string {
 	allLines := strings.Split(page.body, "\n")
 	avail := m.availableContentHeight()
 	scroll := m.contentScroll
+	theme := m.pageTheme()
 
 	var visibleContent string
 	switch m.selectedIndex {
 	case 1:
-		visibleContent = m.renderAboutPage(allLines, scroll, avail, mainWidth)
-
+		visibleContent = pages.RenderAbout(pages.ClampVisibleLines(allLines, scroll, avail), mainWidth, theme)
 	case 2:
-		visibleContent = m.renderProjectsPage(allLines, scroll, avail, mainWidth)
-
+		if len(m.projects) > 0 {
+			visibleContent = pages.RenderProjects(allLines, scroll, avail, mainWidth, m.selectedProject, theme)
+		} else {
+			visibleContent = m.styles.contentStyle.Render(strings.Join(allLines, "\n"))
+		}
 	case 3:
-		visibleContent = m.renderCertsPage(allLines, scroll, avail)
-
+		if len(m.certifications) > 0 {
+			visibleContent = pages.RenderCerts(allLines, scroll, avail, m.selectedCert, toPageCerts(m.certifications), theme)
+		} else {
+			visibleContent = m.styles.contentStyle.Render(strings.Join(allLines, "\n"))
+		}
 	case 4:
-		visibleContent = m.renderContactPage(allLines)
-
+		visibleContent = pages.RenderContact(allLines, m.selectedContact, theme)
 	case 5:
-		visibleContent = m.renderRuntimeStatus(mainWidth, scroll, avail)
-
+		visibleContent = pages.RenderStatus(m.statusPageRawLines(), mainWidth, scroll, avail, theme)
 	default:
-		visibleContent = m.renderDefaultPage(allLines, scroll, avail)
+		visibleContent = pages.RenderDefault(pages.ClampVisibleLines(allLines, scroll, avail), theme)
 	}
 
 	return title + "\n" + divider + "\n\n" + visibleContent
-}
-
-func (m Model) buildStyledAboutContent(lines []string, mainWidth int) string {
-	var result string
-	wrapWidth := mainWidth - 2 - 2 - 2
-	if wrapWidth < 40 {
-		wrapWidth = 40
-	}
-
-	for _, line := range lines {
-		trimmed := strings.TrimSpace(line)
-
-		if trimmed == "" {
-			result += "\n"
-			continue
-		}
-
-		if isSectionHeader(line) {
-			result += m.styles.sectionHeaderStyle.Render(trimmed) + "\n"
-			continue
-		}
-
-		if strings.HasPrefix(trimmed, "▸") {
-			rest := strings.TrimSpace(strings.TrimPrefix(trimmed, "▸"))
-			if strings.Contains(rest, "(") && strings.Contains(rest, "–") {
-				parenIdx := strings.Index(rest, " (")
-				if parenIdx != -1 {
-					name := rest[:parenIdx]
-					date := rest[parenIdx:]
-					result += m.styles.bulletStyle.Render("▸ ") + m.styles.contentStyle.Render(name) + m.styles.mutedStyle.Render(date) + "\n"
-					continue
-				}
-			}
-			result += m.styles.bulletStyle.Render("▸ ") + m.styles.contentStyle.Render(rest) + "\n"
-			continue
-		}
-
-		if strings.HasPrefix(line, "  ") {
-			if strings.Contains(trimmed, "–") && strings.Contains(trimmed, "(") {
-				result += m.styles.mutedStyle.Render("  "+trimmed) + "\n"
-			} else if strings.Contains(trimmed, "Team") || strings.Contains(trimmed, "Cadet") {
-				result += "  " + m.styles.activeItemStyle.Render(trimmed) + "\n"
-			} else {
-				result += "  " + m.styles.contentStyle.Render(trimmed) + "\n"
-			}
-			continue
-		}
-
-		if strings.ContainsAny(line, "█░") {
-			parts := strings.Fields(line)
-			if len(parts) >= 3 {
-				name := parts[0]
-				bar := parts[1]
-				label := strings.Join(parts[2:], " ")
-				result += m.styles.contentStyle.Render(fmt.Sprintf("%-10s", name)) +
-					m.styles.contentStyle.Render(bar) +
-					m.styles.mutedStyle.Render("  "+label) + "\n"
-				continue
-			}
-		}
-
-		wrapped := wordWrap(trimmed, wrapWidth)
-		for _, wline := range wrapped {
-			if strings.Contains(wline, "▸") {
-				parts := strings.Split(wline, "▸")
-				styledLine := m.styles.contentStyle.Render(parts[0])
-				for i := 1; i < len(parts); i++ {
-					styledLine += m.styles.bulletStyle.Render("▸") + m.styles.contentStyle.Render(parts[i])
-				}
-				result += styledLine + "\n"
-			} else {
-				result += m.styles.contentStyle.Render(wline) + "\n"
-			}
-		}
-	}
-
-	return strings.TrimRight(result, "\n")
-}
-
-func (m Model) buildStyledProjectContent(allLines []string, scroll, avail, mainWidth int) string {
-	var result string
-	linesEmitted := 0
-	projectIndex := 0
-	renderedLine := 0
-
-	wrapWidth := mainWidth - 2 - 2 - 2
-	if wrapWidth < 40 {
-		wrapWidth = 40
-	}
-
-	for _, line := range allLines {
-		if linesEmitted >= avail {
-			break
-		}
-
-		trimmed := strings.TrimSpace(line)
-
-		isTitleLine := strings.Contains(line, "(") &&
-			strings.Contains(line, "–") &&
-			strings.Contains(line, ")")
-
-		if isTitleLine {
-			idx := projectIndex
-			projectIndex++
-			titleRL := renderedLine
-			dateRL := renderedLine + 1
-			renderedLine += 2
-
-			if titleRL >= scroll && linesEmitted < avail {
-				parts := strings.SplitN(line, " (", 2)
-				var indicator string
-				if idx == m.selectedProject {
-					indicator = m.styles.activeItemStyle.Render("● ")
-				} else {
-					indicator = m.styles.dimStyle.Render("○ ")
-				}
-				result += indicator + m.styles.projectTitleStyle.Render(parts[0]) + "\n"
-				linesEmitted++
-			}
-			if dateRL >= scroll && linesEmitted < avail {
-				parts := strings.SplitN(line, " (", 2)
-				if len(parts) == 2 {
-					date := strings.TrimSuffix(parts[1], ")")
-					result += "  " + m.styles.mutedStyle.Render(date) + "\n"
-					linesEmitted++
-				}
-			}
-			continue
-		}
-
-		if trimmed == "" {
-			if renderedLine >= scroll && linesEmitted < avail {
-				result += "\n"
-				linesEmitted++
-			}
-			renderedLine++
-			continue
-		}
-
-		if strings.Contains(line, ",") && !strings.Contains(line, ", ") {
-			if renderedLine >= scroll && linesEmitted < avail {
-				tags := strings.Split(line, ",")
-				var styled []string
-				for _, tag := range tags {
-					styled = append(styled, m.styles.activeItemStyle.Render(strings.TrimSpace(tag)))
-				}
-				result += "  " + strings.Join(styled, m.styles.dimStyle.Render(" · ")) + "\n"
-				linesEmitted++
-			}
-			renderedLine++
-			continue
-		}
-
-		wrapped := wordWrap(trimmed, wrapWidth)
-		for i, wline := range wrapped {
-			lineRL := renderedLine + i
-			if lineRL >= scroll && linesEmitted < avail {
-				result += m.styles.contentStyle.Render("  "+wline) + "\n"
-				linesEmitted++
-			}
-		}
-		renderedLine += len(wrapped)
-	}
-
-	return strings.TrimRight(result, "\n")
-}
-
-func (m Model) buildStyledCertContent(allLines []string, scroll, avail int) string {
-	var result string
-	linesEmitted := 0
-	certIndex := 0
-	renderedLine := 0
-
-	for _, line := range allLines {
-		if linesEmitted >= avail {
-			break
-		}
-
-		trimmed := strings.TrimSpace(line)
-
-		if strings.HasPrefix(trimmed, "CERT|||") {
-			idx := certIndex
-			certIndex++
-
-			parts := strings.SplitN(trimmed, "|||", 3)
-			title := ""
-			date := ""
-			if len(parts) >= 2 {
-				title = parts[1]
-			}
-			if len(parts) >= 3 {
-				date = parts[2]
-			}
-
-			var indicator string
-			if idx == m.selectedCert {
-				indicator = m.styles.activeItemStyle.Render("● ")
-			} else {
-				indicator = m.styles.dimStyle.Render("○ ")
-			}
-
-			linkIcon := m.styles.dimStyle.Render(" ·")
-			if idx < len(m.certifications) && m.certifications[idx].URL != "" {
-				linkIcon = m.styles.mutedStyle.Render(" ↗")
-			}
-
-			titleRL := renderedLine
-			dateRL := renderedLine + 1
-			renderedLine += 2
-
-			if titleRL >= scroll && linesEmitted < avail {
-				result += indicator + m.styles.projectTitleStyle.Render(title) + linkIcon + "\n"
-				linesEmitted++
-			}
-			if dateRL >= scroll && linesEmitted < avail {
-				if date != "" {
-					result += "  " + m.styles.mutedStyle.Render(date) + "\n"
-				} else {
-					result += "\n"
-				}
-				linesEmitted++
-			}
-			continue
-		}
-
-		if strings.HasPrefix(trimmed, "ORG|||") {
-			if renderedLine >= scroll && linesEmitted < avail {
-				org := strings.TrimPrefix(trimmed, "ORG|||")
-				result += "  " + m.styles.contentStyle.Render(org) + "\n"
-				linesEmitted++
-			}
-			renderedLine++
-			continue
-		}
-
-		if trimmed == "" {
-			if renderedLine >= scroll && linesEmitted < avail {
-				result += "\n"
-				linesEmitted++
-			}
-			renderedLine++
-			continue
-		}
-
-		if renderedLine >= scroll && linesEmitted < avail {
-			result += "  " + m.styles.contentStyle.Render(trimmed) + "\n"
-			linesEmitted++
-		}
-		renderedLine++
-	}
-
-	return strings.TrimRight(result, "\n")
-}
-
-func (m Model) buildStyledContactContent(allLines []string) string {
-	var result string
-	idx := 0
-
-	for _, line := range allLines {
-		trimmed := strings.TrimSpace(line)
-
-		if trimmed == "" {
-			result += "\n"
-			continue
-		}
-
-		if strings.HasPrefix(trimmed, "CONTACT|||") {
-			parts := strings.SplitN(trimmed, "|||", 4)
-			label := ""
-			handle := ""
-			if len(parts) >= 2 {
-				label = parts[1]
-			}
-			if len(parts) >= 3 {
-				handle = parts[2]
-			}
-
-			var indicator string
-			if idx == m.selectedContact {
-				indicator = m.styles.activeItemStyle.Render("● ")
-			} else {
-				indicator = m.styles.dimStyle.Render("○ ")
-			}
-
-			result += indicator +
-				m.styles.mutedStyle.Render(fmt.Sprintf("%-10s", label)) +
-				m.styles.contentStyle.Render(handle) + "\n"
-			idx++
-			continue
-		}
-
-		result += m.styles.contentStyle.Render(trimmed) + "\n"
-	}
-
-	return strings.TrimRight(result, "\n")
 }
 
 func (m Model) renderStatusBar() string {

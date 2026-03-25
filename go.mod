@@ -1,4 +1,4 @@
-module github.com/user/tui-portfolio
+module github.com/amansanoj/tui-portfolio
 
 go 1.23.0
 

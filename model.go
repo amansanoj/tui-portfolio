@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/amansanoj/tui-portfolio/pages"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 )
@@ -51,27 +52,56 @@ var defaultContactItems = []ContactItem{
 	{Label: "LinkedIn", Handle: "amansanoj", URL: "https://linkedin.com/in/amansanoj"},
 }
 
-func buildContactBody(items []ContactItem) string {
-	var sb strings.Builder
-	for i, item := range items {
-		sb.WriteString(fmt.Sprintf("CONTACT|||%s|||%s|||%s\n", item.Label, item.Handle, item.URL))
-		if i < len(items)-1 {
-			sb.WriteString("\n")
-		}
+func toPageProjects(projectsData []Project) []pages.ProjectData {
+	out := make([]pages.ProjectData, 0, len(projectsData))
+	for _, proj := range projectsData {
+		out = append(out, pages.ProjectData{
+			Name:        proj.Name,
+			Description: proj.Description,
+			Date:        formatDateRange(proj.Date),
+			TechStack:   proj.TechStack,
+		})
 	}
-	return strings.TrimRight(sb.String(), "\n")
+	return out
+}
+
+func toPageCerts(certsData []Certification) []pages.CertData {
+	out := make([]pages.CertData, 0, len(certsData))
+	for _, cert := range certsData {
+		out = append(out, pages.CertData{
+			Title:        cert.Title,
+			Date:         formatDateRange(cert.Date),
+			Organization: cert.Organization,
+			URL:          cert.URL,
+		})
+	}
+	return out
+}
+
+func toPageContacts(items []ContactItem) []pages.ContactData {
+	out := make([]pages.ContactData, 0, len(items))
+	for _, item := range items {
+		out = append(out, pages.ContactData{
+			Label:  item.Label,
+			Handle: item.Handle,
+			URL:    item.URL,
+		})
+	}
+	return out
 }
 
 func NewModel(renderer *lipgloss.Renderer) Model {
 	snapshot := appContentStore.Snapshot()
 	notionProjects := snapshot.Projects
 	notionCerts := snapshot.Certifications
+	pageProjects := toPageProjects(notionProjects)
+	pageCerts := toPageCerts(notionCerts)
 
 	var projectsContent string
 	var projBodyOffsets, projRenderedOffsets []int
 	var projRenderedTotal int
 	if snapshot.Ready {
-		projectsContent, projBodyOffsets, projRenderedOffsets, projRenderedTotal = buildProjectsBody(notionProjects)
+		projectsContent, projBodyOffsets, projRenderedOffsets, projRenderedTotal = pages.BuildProjectsBody(pageProjects)
 	} else {
 		projectsContent = "Loading projects..."
 		projRenderedTotal = 1
@@ -82,14 +112,14 @@ func NewModel(renderer *lipgloss.Renderer) Model {
 	var certBodyOffsets, certRenderedOffsets []int
 	var certRenderedTotal int
 	if snapshot.Ready {
-		certsContent, certBodyOffsets, certRenderedOffsets, certRenderedTotal = buildCertsBody(notionCerts)
+		certsContent, certBodyOffsets, certRenderedOffsets, certRenderedTotal = pages.BuildCertsBody(pageCerts)
 	} else {
 		certsContent = "Loading certifications..."
 		certRenderedTotal = 1
 	}
 
 	contactItems := defaultContactItems
-	contactBody := buildContactBody(contactItems)
+	contactBody := pages.BuildContactBody(toPageContacts(contactItems))
 
 	return Model{
 		styles:                 makeStyles(renderer),
@@ -116,65 +146,10 @@ func NewModel(renderer *lipgloss.Renderer) Model {
 		},
 		pageContents: []pageContent{
 			{
-				body: ` █████╗ ███╗   ███╗ █████╗ ███╗  ██╗
-██╔══██╗████╗ ████║██╔══██╗████╗ ██║
-███████║██╔████╔██║███████║██╔██╗██║
-██╔══██║██║╚██╔╝██║██╔══██║██║╚████║
-██║  ██║██║ ╚═╝ ██║██║  ██║██║ ╚███║
-╚═╝  ╚═╝╚═╝     ╚═╝╚═╝  ╚═╝╚═╝  ╚══╝
-
- Developer & Student  ·  Dubai, UAE
-
- ┌─────────────────────────────────────┐
- │  Currently                          │
- │  ▸ Co-Founder @ Falak.me            │
- │  ▸ Senior year, High School         │
- │  ▸ Building things                  │
- └─────────────────────────────────────┘
-
- Navigate
- 2 About     — my story, skills & education
- 3 Projects  — things I've shipped
- 4 Certs     — certifications I've earned
- 5 Contact   — get in touch
- 6 Status    — runtime & cache health`,
+				body: pages.HomeBody(),
 			},
 			{
-				body: `Hey, I'm Aman — a developer and student who enjoys
-building things for the web. I'm currently studying and
-working on personal projects that keep me learning.
-
-I care about writing clean, readable code and I'm always
-looking to pick up new skills.
-
-Experience
-▸ Co-Founder – Falak.me
-  Jan 2025 – Present | Dubai, UAE
-
-Skills
-Python • JavaScript • React.js • Node.js
-Next.js • Supabase • Responsive Web Design
-Machine Learning • Data Science • AI
-Database Development • Data Visualization
-Brand Management • Ethical AI Governance
-
-Education
-▸ GEMS Our Own Indian School (Apr 2024–Mar 2026)
-  Senior School Certificate (CBSE)
-  Physics, Chemistry, Math, Computer Science, English
-  Grade: 83.4% (Predicted) | Dubai
-  Innovation and Coding Team
-
-▸ Bhavans Pearl Wisdom School (Jan 2023–Mar 2024)
-  Secondary School Certificate (CBSE)
-  Science, Math, Social Science, French, English
-  Grade: 94.2% | Al Ain
-
-Languages
-English   ████████████  Bilingual
-Malayalam ████████████  Native
-Hindi     █████████░░░  Proficient
-French    ████░░░░░░░░  Basic`,
+				body: pages.AboutBody(),
 			},
 			{body: projectsContent},
 			{body: certsContent},
@@ -184,81 +159,6 @@ French    ████░░░░░░░░  Basic`,
 		windowWidth:  120,
 		windowHeight: 30,
 	}
-}
-
-func buildProjectsBody(projects []Project) (string, []int, []int, int) {
-	if len(projects) == 0 {
-		return "No projects found.\nMake sure NOTION_API_KEY is set.", nil, nil, 2
-	}
-	var sb strings.Builder
-	bodyOffsets := make([]int, len(projects))
-	renderedOffsets := make([]int, len(projects))
-	bodyLine := 0
-	renderedLine := 0
-	for i, proj := range projects {
-		bodyOffsets[i] = bodyLine
-		renderedOffsets[i] = renderedLine
-
-		dateRange := formatDateRange(proj.Date)
-		if dateRange != "" {
-			sb.WriteString(fmt.Sprintf("%s (%s)\n", proj.Name, dateRange))
-		} else {
-			sb.WriteString(fmt.Sprintf("%s\n", proj.Name))
-		}
-		bodyLine++
-		renderedLine += 2
-
-		sb.WriteString(fmt.Sprintf("%s\n", proj.Description))
-		bodyLine++
-		renderedLine++
-
-		if proj.TechStack != "" {
-			sb.WriteString(fmt.Sprintf("%s\n", proj.TechStack))
-			bodyLine++
-			renderedLine++
-		}
-		if i < len(projects)-1 {
-			sb.WriteString("\n")
-			bodyLine++
-			renderedLine++
-		}
-	}
-	return sb.String(), bodyOffsets, renderedOffsets, renderedLine
-}
-
-func buildCertsBody(certs []Certification) (string, []int, []int, int) {
-	if len(certs) == 0 {
-		return "No certifications found.\nMake sure NOTION_API_KEY is set.", nil, nil, 2
-	}
-	var sb strings.Builder
-	bodyOffsets := make([]int, len(certs))
-	renderedOffsets := make([]int, len(certs))
-	bodyLine := 0
-	renderedLine := 0
-	for i, cert := range certs {
-		bodyOffsets[i] = bodyLine
-		renderedOffsets[i] = renderedLine
-
-		date := formatDateRange(cert.Date)
-		if date != "" {
-			sb.WriteString(fmt.Sprintf("CERT|||%s|||%s\n", cert.Title, date))
-		} else {
-			sb.WriteString(fmt.Sprintf("CERT|||%s|||\n", cert.Title))
-		}
-		bodyLine++
-		renderedLine += 2
-
-		sb.WriteString(fmt.Sprintf("ORG|||%s\n", cert.Organization))
-		bodyLine++
-		renderedLine++
-
-		if i < len(certs)-1 {
-			sb.WriteString("\n")
-			bodyLine++
-			renderedLine++
-		}
-	}
-	return sb.String(), bodyOffsets, renderedOffsets, renderedLine
 }
 
 func (m Model) Init() tea.Cmd {
@@ -650,35 +550,4 @@ func wordWrap(text string, maxWidth int) []string {
 		lines = append(lines, current)
 	}
 	return lines
-}
-
-func isSectionHeader(line string) bool {
-	trimmed := strings.TrimSpace(line)
-	if trimmed == "" {
-		return false
-	}
-	if strings.ContainsAny(trimmed, "█░") {
-		return false
-	}
-	if strings.HasPrefix(trimmed, "▸") || strings.HasPrefix(trimmed, "●") ||
-		strings.HasPrefix(trimmed, "○") || strings.HasPrefix(trimmed, "█") ||
-		strings.HasPrefix(trimmed, " ") || strings.HasPrefix(trimmed, "│") ||
-		strings.HasPrefix(trimmed, "└") || strings.HasPrefix(trimmed, "┌") {
-		return false
-	}
-	words := strings.Fields(trimmed)
-	if len(words) > 4 {
-		return false
-	}
-	if strings.ContainsAny(trimmed, ".,@•·—") {
-		return false
-	}
-	upper := strings.ToUpper(trimmed)
-	if trimmed == upper {
-		return true
-	}
-	if len(trimmed) > 0 && trimmed[0] >= 'A' && trimmed[0] <= 'Z' && len(words) <= 3 {
-		return true
-	}
-	return false
 }
