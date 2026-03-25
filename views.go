@@ -92,7 +92,7 @@ func (m Model) renderSidebar() string {
 	var sb strings.Builder
 
 	sb.WriteString(m.styles.nameStyle.Render("Aman Sanoj") + "\n")
-	sb.WriteString(m.styles.taglineStyle.Render("dev & student") + "\n\n")
+	sb.WriteString(m.styles.dimStyle.Render(strings.Repeat("─", 16)) + "\n\n")
 
 	for i, item := range m.menuItems {
 		num := fmt.Sprintf("%d", i+1)
@@ -113,7 +113,11 @@ func (m Model) renderMainContent(mainWidth int) string {
 
 	page := m.pageContents[m.selectedIndex]
 	title := m.styles.subtitleStyle.Render(m.menuItems[m.selectedIndex].title)
-	divider := m.styles.dimStyle.Render(strings.Repeat("─", 44))
+	dividerWidth := mainWidth - 6
+	if dividerWidth < 1 {
+		dividerWidth = 1
+	}
+	divider := m.styles.dimStyle.Render(strings.Repeat("─", dividerWidth))
 
 	allLines := strings.Split(page.body, "\n")
 	avail := m.availableContentHeight()
