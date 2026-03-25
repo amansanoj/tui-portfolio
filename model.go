@@ -112,12 +112,10 @@ func NewModel(renderer *lipgloss.Renderer) Model {
  └─────────────────────────────────────┘
 
  Navigate
- ▸ About     — my story, skills & education
- ▸ Projects  — things I've shipped
- ▸ Certs     — certifications I've earned
- ▸ Contact   — get in touch
-
- Use 1 / 2 / 3 / 4 / 5 to navigate`,
+ 2 About     — my story, skills & education
+ 3 Projects  — things I've shipped
+ 4 Certs     — certifications I've earned
+ 5 Contact   — get in touch`,
 			},
 			{
 				body: `Hey, I'm Aman — a developer and student who enjoys
