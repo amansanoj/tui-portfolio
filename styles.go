@@ -5,15 +5,10 @@ import "github.com/charmbracelet/lipgloss"
 const (
 	primaryDefault = "#156bb3"
 	primaryLight   = "#3d8fd1"
-	primaryDark    = "#0e4f87"
 
 	accentDefault = "#ea944c"
-	accentLight   = "#f0b07a"
-	accentDark    = "#c8712a"
 
-	neutral0   = "#ffffff"
 	neutral100 = "#e8e8e8"
-	neutral200 = "#d0d0d0"
 	neutral400 = "#9a9a9a"
 	neutral600 = "#5a5a5a"
 	neutral700 = "#3f3f3f"

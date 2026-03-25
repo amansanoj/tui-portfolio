@@ -31,13 +31,13 @@ func (m Model) View() string {
 	base := lipgloss.JoinVertical(lipgloss.Left, topRow, statusBar)
 
 	if m.showingURL != "" {
-		return m.renderURLPopup(base)
+		return m.renderURLPopup()
 	}
 	return base
 }
 
 // renderURLPopup overlays a centered box with the URL on top of the base view.
-func (m Model) renderURLPopup(base string) string {
+func (m Model) renderURLPopup() string {
 	url := m.showingURL
 
 	maxURLWidth := m.windowWidth - 16

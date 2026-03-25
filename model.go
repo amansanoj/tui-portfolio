@@ -435,7 +435,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	return m, nil
 }
 
-func (m Model) certItemHeight(idx int) int {
+func (m Model) certItemHeight(_ int) int {
 	return 3
 }
 
