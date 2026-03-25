@@ -8,6 +8,7 @@ import (
 	"io"
 	"net/http"
 	"os"
+	"strconv"
 	"strings"
 	"time"
 )
@@ -15,6 +16,9 @@ import (
 const (
 	notionAPIVersion               = "2022-06-28"
 	notionRequestTimeout           = 10 * time.Second
+	notionMaxRetries               = 3
+	notionRetryBaseDelay           = 250 * time.Millisecond
+	notionUserAgent                = "tui-portfolio/1.0"
 	defaultNotionProjectsDatabase  = "32acb49d4dc9804ab1b5f3ccf42c375c"
 	defaultNotionCertsDatabase     = "32bcb49d4dc9806e82aae4f172dbf8cd"
 	notionProjectsDatabaseIDEnvVar = "NOTION_PROJECTS_DB_ID"
@@ -85,35 +89,108 @@ func queryNotionDatabase(apiKey, databaseID string) (NotionResponse, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), notionRequestTimeout)
 	defer cancel()
 
+	var lastErr error
+	for attempt := 1; attempt <= notionMaxRetries; attempt++ {
+		status, body, retryAfter, err := executeNotionQuery(ctx, url, apiKey)
+		if err != nil {
+			lastErr = err
+			if ctx.Err() != nil {
+				break
+			}
+			if attempt < notionMaxRetries {
+				if !sleepWithContext(ctx, notionRetryBaseDelay*time.Duration(1<<(attempt-1))) {
+					break
+				}
+				continue
+			}
+			break
+		}
+
+		if status == http.StatusOK {
+			if err := json.Unmarshal(body, &notionResp); err != nil {
+				return notionResp, fmt.Errorf("parsing response failed: %w", err)
+			}
+			return notionResp, nil
+		}
+
+		msg := strings.TrimSpace(string(body))
+		lastErr = fmt.Errorf("notion API returned %d: %s", status, msg)
+		if !isRetryableStatus(status) || attempt == notionMaxRetries {
+			break
+		}
+
+		delay := parseRetryAfter(retryAfter)
+		if delay <= 0 {
+			delay = notionRetryBaseDelay * time.Duration(1<<(attempt-1))
+		}
+		if !sleepWithContext(ctx, delay) {
+			break
+		}
+	}
+
+	if lastErr == nil {
+		lastErr = fmt.Errorf("unknown Notion request failure")
+	}
+	return notionResp, lastErr
+}
+
+func executeNotionQuery(ctx context.Context, url, apiKey string) (int, []byte, string, error) {
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost, url, bytes.NewBufferString(`{}`))
 	if err != nil {
-		return notionResp, fmt.Errorf("creating request failed: %w", err)
+		return 0, nil, "", fmt.Errorf("creating request failed: %w", err)
 	}
 
 	req.Header.Add("Authorization", fmt.Sprintf("Bearer %s", apiKey))
 	req.Header.Add("Notion-Version", notionAPIVersion)
 	req.Header.Add("Content-Type", "application/json")
+	req.Header.Add("User-Agent", notionUserAgent)
 
 	resp, err := notionHTTPClient.Do(req)
 	if err != nil {
-		return notionResp, err
+		return 0, nil, "", err
 	}
 	defer resp.Body.Close()
 
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
-		return notionResp, fmt.Errorf("reading response failed: %w", err)
+		return 0, nil, "", fmt.Errorf("reading response failed: %w", err)
 	}
 
-	if resp.StatusCode != http.StatusOK {
-		return notionResp, fmt.Errorf("notion API returned %d: %s", resp.StatusCode, strings.TrimSpace(string(body)))
-	}
+	return resp.StatusCode, body, resp.Header.Get("Retry-After"), nil
+}
 
-	if err := json.Unmarshal(body, &notionResp); err != nil {
-		return notionResp, fmt.Errorf("parsing response failed: %w", err)
+func isRetryableStatus(status int) bool {
+	if status == http.StatusTooManyRequests {
+		return true
 	}
+	return status == http.StatusInternalServerError ||
+		status == http.StatusBadGateway ||
+		status == http.StatusServiceUnavailable ||
+		status == http.StatusGatewayTimeout
+}
 
-	return notionResp, nil
+func parseRetryAfter(header string) time.Duration {
+	header = strings.TrimSpace(header)
+	if header == "" {
+		return 0
+	}
+	seconds, err := strconv.Atoi(header)
+	if err != nil || seconds <= 0 {
+		return 0
+	}
+	return time.Duration(seconds) * time.Second
+}
+
+func sleepWithContext(ctx context.Context, delay time.Duration) bool {
+	t := time.NewTimer(delay)
+	defer t.Stop()
+
+	select {
+	case <-ctx.Done():
+		return false
+	case <-t.C:
+		return true
+	}
 }
 
 func extractPlainText(arr []interface{}) string {
