@@ -331,17 +331,15 @@ func (m Model) buildStyledProjectContent(allLines []string, scroll, avail, mainW
 			continue
 		}
 
-		if renderedLine >= scroll && linesEmitted < avail {
-			wrapped := wordWrap(trimmed, wrapWidth)
-			for _, wline := range wrapped {
-				if linesEmitted >= avail {
-					break
-				}
+		wrapped := wordWrap(trimmed, wrapWidth)
+		for i, wline := range wrapped {
+			lineRL := renderedLine + i
+			if lineRL >= scroll && linesEmitted < avail {
 				result += m.styles.contentStyle.Render("  "+wline) + "\n"
 				linesEmitted++
 			}
 		}
-		renderedLine++
+		renderedLine += len(wrapped)
 	}
 
 	return strings.TrimRight(result, "\n")

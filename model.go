@@ -411,16 +411,34 @@ func (m Model) certItemHeight(idx int) int {
 }
 
 func (m Model) projectItemHeight(idx int) int {
-	offsets, total := m.projectRenderedMetrics()
-	if idx < 0 || idx >= len(offsets) {
+	if idx < 0 || idx >= len(m.projects) {
 		return 0
 	}
-	start := offsets[idx]
-	end := total
-	if idx+1 < len(offsets) {
-		end = offsets[idx+1]
+
+	wrapWidth := m.projectWrapWidth()
+	h := 2
+
+	desc := strings.TrimSpace(m.projects[idx].Description)
+	if desc == "" {
+		h++
+	} else {
+		h += len(wordWrap(desc, wrapWidth))
 	}
-	return end - start
+
+	if m.projects[idx].TechStack != "" {
+		if strings.Contains(m.projects[idx].TechStack, ",") && !strings.Contains(m.projects[idx].TechStack, ", ") {
+			h++
+		} else {
+			tech := strings.TrimSpace(m.projects[idx].TechStack)
+			if tech == "" {
+				h++
+			} else {
+				h += len(wordWrap(tech, wrapWidth))
+			}
+		}
+	}
+
+	return h
 }
 
 func (m Model) scrollRenderedToShow(renderedStart, itemHeight int) int {
