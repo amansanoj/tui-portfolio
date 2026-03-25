@@ -20,7 +20,7 @@ import (
 
 const (
 	defaultHostKeyPath          = "/data/host_key"
-	defaultSSHAddress           = "0.0.0.0:22"
+	defaultSSHAddress           = "0.0.0.0:2222"
 	defaultShutdownTimeout      = 30 * time.Second
 	defaultContentWarmTimeout   = 1500 * time.Millisecond
 	defaultContentRefresh       = 5 * time.Minute

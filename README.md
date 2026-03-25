@@ -64,10 +64,10 @@ go run .
 ### 4. Connect to the local SSH app
 
 ```bash
-ssh localhost -p 22
+ssh localhost -p 2222
 ```
 
-If port 22 is unavailable on your machine, run the app in a container or map a different external port to container port 22.
+If port 2222 is unavailable on your machine, set `APP_ADDR` to another free port in `.env` and reconnect using that port.
 
 ## Environment Variables
 
@@ -75,7 +75,7 @@ If port 22 is unavailable on your machine, run the app in a container or map a d
 | --- | --- | --- | --- |
 | `NOTION_API_KEY` | Yes | none | Notion integration token used to fetch projects and certifications. |
 | `HOST_KEY_PATH` | No | `/data/host_key` | Path to the SSH host private key used by Wish. |
-| `APP_ADDR` | No | `0.0.0.0:22` | SSH server listen address in `host:port` format. |
+| `APP_ADDR` | No | `0.0.0.0:2222` | SSH server listen address in `host:port` format. |
 | `SHUTDOWN_TIMEOUT_SECONDS` | No | `30` | Graceful shutdown timeout in seconds. Must be a positive integer. |
 | `NOTION_PROJECTS_DB_ID` | No | built-in default | Notion database ID used for projects. |
 | `NOTION_CERTS_DB_ID` | No | built-in default | Notion database ID used for certifications. |
