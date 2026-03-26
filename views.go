@@ -186,7 +186,11 @@ func (m Model) renderMainContent(mainWidth int) string {
 	var visibleContent string
 	switch m.selectedIndex {
 	case 1:
-		visibleContent = pages.RenderAbout(pages.ClampVisibleLines(allLines, scroll, avail), mainWidth, theme)
+		aboutRendered := pages.RenderAbout(allLines, mainWidth, theme)
+		visibleContent = strings.Join(
+			pages.ClampVisibleLines(strings.Split(aboutRendered, "\n"), scroll, avail),
+			"\n",
+		)
 	case 2:
 		if len(m.projects) > 0 {
 			visibleContent = pages.RenderProjects(allLines, scroll, avail, mainWidth, m.selectedProject, theme)

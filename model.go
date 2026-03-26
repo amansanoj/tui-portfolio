@@ -391,7 +391,8 @@ func (m Model) scrollRenderedToShow(renderedStart, itemHeight int) int {
 
 func (m Model) availableContentHeight() int {
 	paneHeight := m.windowHeight - 3
-	inner := paneHeight - 2 - 2 - 1
+	// Inner pane height minus: border(2) + padding(2) + title block(4 lines).
+	inner := paneHeight - 2 - 2 - 4
 	if inner < 1 {
 		inner = 1
 	}
@@ -401,6 +402,14 @@ func (m Model) availableContentHeight() int {
 func (m Model) getMaxContentScroll() int {
 	avail := m.availableContentHeight()
 	switch m.selectedIndex {
+	case 1:
+		mainWidth := m.windowWidth - 20 - 4
+		lines := m.aboutPageLineCount(mainWidth)
+		max := lines - avail
+		if max < 0 {
+			max = 0
+		}
+		return max
 	case 2:
 		_, total := m.projectRenderedMetrics()
 		max := total - avail
@@ -433,6 +442,31 @@ func (m Model) getMaxContentScroll() int {
 		}
 		return max
 	}
+}
+
+func (m Model) aboutPageLineCount(mainWidth int) int {
+	if len(m.pageContents) <= 1 {
+		return 0
+	}
+
+	allLines := strings.Split(m.pageContents[1].body, "\n")
+	plain := func(s string) string { return s }
+	theme := pages.Theme{
+		SectionHeader: plain,
+		Bullet:        plain,
+		Content:       plain,
+		Muted:         plain,
+		Active:        plain,
+		Dim:           plain,
+		ProjectTitle:  plain,
+	}
+
+	rendered := pages.RenderAbout(allLines, mainWidth, theme)
+	if rendered == "" {
+		return 0
+	}
+
+	return len(strings.Split(rendered, "\n"))
 }
 
 func (m Model) projectWrapWidth() int {
