@@ -3,7 +3,15 @@ package pages
 import (
 	"fmt"
 	"strings"
+	"unicode"
 )
+
+var monthTokens = []string{
+	"jan", "feb", "mar", "apr", "may", "jun",
+	"jul", "aug", "sep", "sept", "oct", "nov", "dec",
+	"january", "february", "march", "april", "june", "july",
+	"august", "september", "october", "november", "december",
+}
 
 type Theme struct {
 	SectionHeader func(string) string
@@ -63,13 +71,119 @@ func ClampVisibleLines(allLines []string, scroll, avail int) []string {
 func renderBulletsInline(line string, t Theme) string {
 	if strings.Contains(line, "▸") {
 		parts := strings.Split(line, "▸")
-		styledLine := t.Content(parts[0])
+		styledLine := renderMutedDateBrackets(parts[0], t)
 		for i := 1; i < len(parts); i++ {
-			styledLine += t.Bullet("▸") + t.Content(parts[i])
+			styledLine += t.Bullet("▸") + renderMutedDateBrackets(parts[i], t)
 		}
 		return styledLine
 	}
-	return t.Content(line)
+
+	if leading, digit, rest, ok := splitLeadingDigitLine(line); ok {
+		return t.Content(leading) + t.Active(digit) + renderMutedDateBrackets(rest, t)
+	}
+
+	return renderMutedDateBrackets(line, t)
+}
+
+func renderMutedDateBrackets(line string, t Theme) string {
+	if !strings.Contains(line, "(") || !strings.Contains(line, ")") {
+		return t.Content(line)
+	}
+
+	var out strings.Builder
+	idx := 0
+
+	for idx < len(line) {
+		open := strings.Index(line[idx:], "(")
+		if open == -1 {
+			out.WriteString(t.Content(line[idx:]))
+			break
+		}
+
+		open += idx
+		if open > idx {
+			out.WriteString(t.Content(line[idx:open]))
+		}
+
+		close := strings.Index(line[open:], ")")
+		if close == -1 {
+			out.WriteString(t.Content(line[open:]))
+			break
+		}
+
+		close += open
+		segment := line[open : close+1]
+		inner := line[open+1 : close]
+
+		if isDateLikeBracket(inner) {
+			out.WriteString(t.Muted(segment))
+		} else {
+			out.WriteString(t.Content(segment))
+		}
+
+		idx = close + 1
+	}
+
+	return out.String()
+}
+
+func isDateLikeBracket(value string) bool {
+	v := strings.ToLower(strings.TrimSpace(value))
+	if v == "" {
+		return false
+	}
+
+	hasDigit := false
+	for _, r := range v {
+		if unicode.IsDigit(r) {
+			hasDigit = true
+			break
+		}
+	}
+	if !hasDigit {
+		return false
+	}
+
+	hasMonth := false
+	for _, m := range monthTokens {
+		if strings.Contains(v, m) {
+			hasMonth = true
+			break
+		}
+	}
+
+	hasRangeMarker := strings.Contains(v, "present") ||
+		strings.Contains(v, "current") ||
+		strings.Contains(v, "-") ||
+		strings.Contains(v, "–")
+
+	return hasMonth || hasRangeMarker
+}
+
+func splitLeadingDigitLine(line string) (leading, digit, rest string, ok bool) {
+	i := 0
+	for i < len(line) {
+		r := rune(line[i])
+		if r != ' ' && r != '\t' {
+			break
+		}
+		i++
+	}
+
+	if i >= len(line) {
+		return "", "", "", false
+	}
+
+	r := rune(line[i])
+	if !unicode.IsDigit(r) {
+		return "", "", "", false
+	}
+
+	if i+1 >= len(line) || line[i+1] != ' ' {
+		return "", "", "", false
+	}
+
+	return line[:i], line[i : i+1], line[i+1:], true
 }
 
 func RenderDefault(visible []string, t Theme) string {
@@ -142,7 +256,7 @@ func RenderAbout(lines []string, mainWidth int, t Theme) string {
 					continue
 				}
 			}
-			result += t.Bullet("▸ ") + t.Content(rest) + "\n"
+			result += t.Bullet("▸ ") + renderMutedDateBrackets(rest, t) + "\n"
 			continue
 		}
 
@@ -152,7 +266,7 @@ func RenderAbout(lines []string, mainWidth int, t Theme) string {
 			} else if strings.Contains(trimmed, "Team") || strings.Contains(trimmed, "Cadet") {
 				result += "  " + t.Active(trimmed) + "\n"
 			} else {
-				result += "  " + t.Content(trimmed) + "\n"
+				result += "  " + renderMutedDateBrackets(trimmed, t) + "\n"
 			}
 			continue
 		}
@@ -205,8 +319,7 @@ func RenderProjects(allLines []string, scroll, avail, mainWidth, selectedProject
 			idx := projectIndex
 			projectIndex++
 			titleRL := renderedLine
-			dateRL := renderedLine + 1
-			renderedLine += 2
+			renderedLine++
 
 			if titleRL >= scroll && linesEmitted < avail {
 				parts := strings.SplitN(line, " (", 2)
@@ -214,16 +327,13 @@ func RenderProjects(allLines []string, scroll, avail, mainWidth, selectedProject
 				if idx == selectedProject {
 					indicator = t.Active("● ")
 				}
-				result += indicator + t.ProjectTitle(parts[0]) + "\n"
-				linesEmitted++
-			}
-			if dateRL >= scroll && linesEmitted < avail {
-				parts := strings.SplitN(line, " (", 2)
 				if len(parts) == 2 {
-					date := strings.TrimSuffix(parts[1], ")")
-					result += "  " + t.Muted(date) + "\n"
-					linesEmitted++
+					date := "(" + parts[1]
+					result += indicator + t.ProjectTitle(parts[0]) + " " + t.Muted(date) + "\n"
+				} else {
+					result += indicator + t.ProjectTitle(line) + "\n"
 				}
+				linesEmitted++
 			}
 			continue
 		}

@@ -345,7 +345,7 @@ func (m Model) projectItemHeight(idx int) int {
 	}
 
 	wrapWidth := m.projectWrapWidth()
-	h := 2
+	h := 1
 
 	desc := strings.TrimSpace(m.projects[idx].Description)
 	if desc == "" {
@@ -456,8 +456,8 @@ func (m Model) projectRenderedMetrics() ([]int, int) {
 	for i, proj := range m.projects {
 		offsets[i] = renderedLine
 
-		// Title and date are always rendered on two lines.
-		renderedLine += 2
+		// Title and date are rendered together on one line.
+		renderedLine++
 
 		desc := strings.TrimSpace(proj.Description)
 		if desc == "" {

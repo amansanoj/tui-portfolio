@@ -30,7 +30,7 @@ func BuildProjectsBody(projects []ProjectData) (string, []int, []int, int) {
 			body += fmt.Sprintf("%s\n", proj.Name)
 		}
 		bodyLine++
-		renderedLine += 2
+		renderedLine++
 
 		body += fmt.Sprintf("%s\n", proj.Description)
 		bodyLine++
