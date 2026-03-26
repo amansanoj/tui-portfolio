@@ -569,16 +569,12 @@ func RenderStatus(lines []string, mainWidth, scroll, avail int, t Theme) string 
 	visible := ClampVisibleLines(expanded, scroll, avail)
 
 	var out []string
-	for i, line := range visible {
+	for _, line := range visible {
 		if line == "" {
 			out = append(out, "")
 			continue
 		}
-		if i == 0 && scroll == 0 {
-			out = append(out, t.SectionHeader(line))
-		} else {
-			out = append(out, t.Content(line))
-		}
+		out = append(out, t.Content(line))
 	}
 
 	return strings.Join(out, "\n")

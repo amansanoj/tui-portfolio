@@ -391,8 +391,8 @@ func (m Model) scrollRenderedToShow(renderedStart, itemHeight int) int {
 
 func (m Model) availableContentHeight() int {
 	paneHeight := m.windowHeight - 3
-	// Inner pane height minus: border(2) + padding(2) + title block(4 lines).
-	inner := paneHeight - 2 - 2 - 4
+	// Inner pane height minus: border(2) + padding(2) + title block spacer(1 line).
+	inner := paneHeight - 2 - 2 - 1
 	if inner < 1 {
 		inner = 1
 	}
