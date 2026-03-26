@@ -25,9 +25,9 @@ func BuildProjectsBody(projects []ProjectData) (string, []int, []int, int) {
 		renderedOffsets[i] = renderedLine
 
 		if proj.Date != "" {
-			body += fmt.Sprintf("%s (%s)\n", proj.Name, proj.Date)
+			body += fmt.Sprintf("PROJ|||%s|||%s\n", proj.Name, proj.Date)
 		} else {
-			body += fmt.Sprintf("%s\n", proj.Name)
+			body += fmt.Sprintf("PROJ|||%s|||\n", proj.Name)
 		}
 		bodyLine++
 		renderedLine++

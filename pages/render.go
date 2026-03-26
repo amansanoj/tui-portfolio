@@ -247,15 +247,6 @@ func RenderAbout(lines []string, mainWidth int, t Theme) string {
 
 		if strings.HasPrefix(trimmed, "▸") {
 			rest := strings.TrimSpace(strings.TrimPrefix(trimmed, "▸"))
-			if strings.Contains(rest, "(") && strings.Contains(rest, "–") {
-				parenIdx := strings.Index(rest, " (")
-				if parenIdx != -1 {
-					name := rest[:parenIdx]
-					date := rest[parenIdx:]
-					result += t.Bullet("▸ ") + t.Content(name) + t.Muted(date) + "\n"
-					continue
-				}
-			}
 			result += t.Bullet("▸ ") + renderMutedDateBrackets(rest, t) + "\n"
 			continue
 		}
@@ -310,10 +301,39 @@ func RenderProjects(allLines []string, scroll, avail, mainWidth, selectedProject
 		}
 
 		trimmed := strings.TrimSpace(line)
+		if strings.HasPrefix(trimmed, "PROJ|||") {
+			idx := projectIndex
+			projectIndex++
+			titleRL := renderedLine
+			renderedLine++
 
-		isTitleLine := strings.Contains(line, "(") &&
-			strings.Contains(line, "–") &&
-			strings.Contains(line, ")")
+			parts := strings.SplitN(trimmed, "|||", 3)
+			title := ""
+			date := ""
+			if len(parts) >= 2 {
+				title = parts[1]
+			}
+			if len(parts) >= 3 {
+				date = strings.TrimSpace(parts[2])
+			}
+
+			if titleRL >= scroll && linesEmitted < avail {
+				indicator := t.Dim("○ ")
+				if idx == selectedProject {
+					indicator = t.Active("● ")
+				}
+
+				if date != "" {
+					result += indicator + t.ProjectTitle(title) + " " + t.Muted("("+date+")") + "\n"
+				} else {
+					result += indicator + t.ProjectTitle(title) + "\n"
+				}
+				linesEmitted++
+			}
+			continue
+		}
+
+		isTitleLine := strings.Contains(line, " (") && strings.HasSuffix(trimmed, ")")
 
 		if isTitleLine {
 			idx := projectIndex
