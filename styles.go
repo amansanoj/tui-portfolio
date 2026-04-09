@@ -2,20 +2,6 @@ package main
 
 import "github.com/charmbracelet/lipgloss"
 
-const (
-	primaryDefault = "#156bb3"
-	primaryLight   = "#3d8fd1"
-
-	accentDefault = "#ea944c"
-
-	neutral100 = "#e8e8e8"
-	neutral400 = "#9a9a9a"
-	neutral600 = "#5a5a5a"
-	neutral700 = "#3f3f3f"
-	neutral800 = "#2e2e2e"
-	neutral900 = "#191919"
-)
-
 type Styles struct {
 	sidePaneStyle        lipgloss.Style
 	mainPaneActiveStyle  lipgloss.Style
@@ -41,19 +27,21 @@ type Styles struct {
 func makeStyles(r *lipgloss.Renderer) Styles {
 	return Styles{
 		sidePaneStyle: r.NewStyle().
+			Background(lipgloss.Color(neutral900)).
 			Border(lipgloss.RoundedBorder()).
 			BorderForeground(lipgloss.Color(neutral600)).
 			Foreground(lipgloss.Color(neutral100)).
 			Padding(1, 2),
 
 		mainPaneActiveStyle: r.NewStyle().
+			Background(lipgloss.Color(neutral900)).
 			Border(lipgloss.RoundedBorder()).
 			BorderForeground(lipgloss.Color(primaryDefault)).
 			Foreground(lipgloss.Color(neutral100)).
 			Padding(1, 2),
 
 		activeItemStyle: r.NewStyle().
-			Foreground(lipgloss.Color(accentDefault)).
+			Foreground(lipgloss.Color(secondaryDefault)).
 			Bold(true),
 
 		inactiveItemStyle: r.NewStyle().
@@ -84,7 +72,7 @@ func makeStyles(r *lipgloss.Renderer) Styles {
 			Foreground(lipgloss.Color(neutral700)),
 
 		bulletStyle: r.NewStyle().
-			Foreground(lipgloss.Color(accentDefault)),
+			Foreground(lipgloss.Color(secondaryDefault)),
 
 		projectTitleStyle: r.NewStyle().
 			Foreground(lipgloss.Color(primaryLight)).
