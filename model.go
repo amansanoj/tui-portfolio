@@ -174,10 +174,25 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, nil
 		}
 
-		switch msg.String() {
-		case "q", "ctrl+c":
+		if msg.Type == tea.KeyCtrlC {
 			return m, tea.Quit
+		}
 
+		if len(msg.Runes) == 1 && !msg.Alt {
+			switch msg.Runes[0] {
+			case 'q', 'Q':
+				return m, tea.Quit
+			case '1', '2', '3', '4', '5', '6':
+				m.selectedIndex = int(msg.Runes[0] - '1')
+				m.contentScroll = 0
+				m.selectedProject = 0
+				m.selectedCert = 0
+				m.selectedContact = 0
+				return m, nil
+			}
+		}
+
+		switch msg.String() {
 		case "enter":
 			url := ""
 			switch m.selectedIndex {
@@ -197,43 +212,6 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			if url != "" {
 				m.showingURL = url
 			}
-
-		case "1":
-			m.selectedIndex = 0
-			m.contentScroll = 0
-			m.selectedProject = 0
-			m.selectedCert = 0
-			m.selectedContact = 0
-		case "2":
-			m.selectedIndex = 1
-			m.contentScroll = 0
-			m.selectedProject = 0
-			m.selectedCert = 0
-			m.selectedContact = 0
-		case "3":
-			m.selectedIndex = 2
-			m.contentScroll = 0
-			m.selectedProject = 0
-			m.selectedCert = 0
-			m.selectedContact = 0
-		case "4":
-			m.selectedIndex = 3
-			m.contentScroll = 0
-			m.selectedProject = 0
-			m.selectedCert = 0
-			m.selectedContact = 0
-		case "5":
-			m.selectedIndex = 4
-			m.contentScroll = 0
-			m.selectedProject = 0
-			m.selectedCert = 0
-			m.selectedContact = 0
-		case "6":
-			m.selectedIndex = 5
-			m.contentScroll = 0
-			m.selectedProject = 0
-			m.selectedCert = 0
-			m.selectedContact = 0
 
 		case "up":
 			switch m.selectedIndex {
