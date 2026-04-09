@@ -19,6 +19,7 @@ type Theme struct {
 	Content       func(string) string
 	Muted         func(string) string
 	Active        func(string) string
+	Accent        func(string) string
 	Dim           func(string) string
 	ProjectTitle  func(string) string
 }
@@ -255,7 +256,7 @@ func RenderAbout(lines []string, mainWidth int, t Theme) string {
 			if strings.Contains(trimmed, "–") && strings.Contains(trimmed, "(") {
 				result += t.Muted("  "+trimmed) + "\n"
 			} else if strings.Contains(trimmed, "Team") || strings.Contains(trimmed, "Cadet") {
-				result += "  " + t.Active(trimmed) + "\n"
+				result += "  " + t.Accent(trimmed) + "\n"
 			} else {
 				result += "  " + renderMutedDateBrackets(trimmed, t) + "\n"
 			}
@@ -372,7 +373,7 @@ func RenderProjects(allLines []string, scroll, avail, mainWidth, selectedProject
 				tags := strings.Split(line, ",")
 				var styled []string
 				for _, tag := range tags {
-					styled = append(styled, t.Active(strings.TrimSpace(tag)))
+					styled = append(styled, t.Accent(strings.TrimSpace(tag)))
 				}
 				result += "  " + strings.Join(styled, t.Dim(" · ")) + "\n"
 				linesEmitted++
@@ -429,7 +430,7 @@ func RenderCerts(allLines []string, scroll, avail, selectedCert int, certs []Cer
 
 			linkIcon := t.Dim(" ·")
 			if idx < len(certs) && certs[idx].URL != "" {
-				linkIcon = t.Muted(" ↗")
+				linkIcon = t.Accent(" ↗")
 			}
 
 			titleRL := renderedLine

@@ -17,6 +17,7 @@ func (m Model) pageTheme() pages.Theme {
 		Content:       func(s string) string { return m.styles.contentStyle.Render(s) },
 		Muted:         func(s string) string { return m.styles.mutedStyle.Render(s) },
 		Active:        func(s string) string { return m.styles.activeItemStyle.Render(s) },
+		Accent:        func(s string) string { return m.styles.accentStyle.Render(s) },
 		Dim:           func(s string) string { return m.styles.dimStyle.Render(s) },
 		ProjectTitle:  func(s string) string { return m.styles.projectTitleStyle.Render(s) },
 	}

@@ -2,6 +2,25 @@ package main
 
 import "github.com/charmbracelet/lipgloss"
 
+const (
+	primaryDefault = "rgb(61, 143, 209)"
+	primaryLight   = "rgb(90, 159, 216)"
+	primaryDeep    = "rgb(39, 108, 165)"
+
+	secondaryDefault = "rgb(240, 176, 122)"
+	secondaryStrong  = "rgb(230, 117, 25)"
+
+	accentDefault = "rgb(168, 158, 105)"
+	accentLight   = "rgb(181, 171, 125)"
+
+	neutral100 = "rgb(230, 230, 230)"
+	neutral400 = "rgb(153, 153, 153)"
+	neutral600 = "rgb(102, 102, 102)"
+	neutral700 = "rgb(77, 77, 77)"
+	neutral800 = "rgb(51, 51, 51)"
+	neutral900 = "rgb(26, 26, 26)"
+)
+
 type Styles struct {
 	sidePaneStyle        lipgloss.Style
 	mainPaneActiveStyle  lipgloss.Style
@@ -14,6 +33,7 @@ type Styles struct {
 	contentStyle         lipgloss.Style
 	mutedStyle           lipgloss.Style
 	dimStyle             lipgloss.Style
+	accentStyle          lipgloss.Style
 	bulletStyle          lipgloss.Style
 	projectTitleStyle    lipgloss.Style
 	statusBarStyle       lipgloss.Style
@@ -41,11 +61,11 @@ func makeStyles(r *lipgloss.Renderer) Styles {
 			Padding(1, 2),
 
 		activeItemStyle: r.NewStyle().
-			Foreground(lipgloss.Color(secondaryDefault)).
+			Foreground(lipgloss.Color(secondaryStrong)).
 			Bold(true),
 
 		inactiveItemStyle: r.NewStyle().
-			Foreground(lipgloss.Color(neutral600)),
+			Foreground(lipgloss.Color(secondaryDefault)),
 
 		nameStyle: r.NewStyle().
 			Foreground(lipgloss.Color(neutral100)).
@@ -71,8 +91,12 @@ func makeStyles(r *lipgloss.Renderer) Styles {
 		dimStyle: r.NewStyle().
 			Foreground(lipgloss.Color(neutral700)),
 
+		accentStyle: r.NewStyle().
+			Foreground(lipgloss.Color(accentDefault)).
+			Bold(true),
+
 		bulletStyle: r.NewStyle().
-			Foreground(lipgloss.Color(secondaryDefault)),
+			Foreground(lipgloss.Color(accentDefault)),
 
 		projectTitleStyle: r.NewStyle().
 			Foreground(lipgloss.Color(primaryLight)).
@@ -83,7 +107,7 @@ func makeStyles(r *lipgloss.Renderer) Styles {
 			Foreground(lipgloss.Color(neutral400)),
 
 		statusKeyStyle: r.NewStyle().
-			Background(lipgloss.Color(neutral700)).
+			Background(lipgloss.Color(primaryDeep)).
 			Foreground(lipgloss.Color(neutral100)).
 			Padding(0, 1).
 			Bold(true),
@@ -94,7 +118,7 @@ func makeStyles(r *lipgloss.Renderer) Styles {
 
 		statusScrollBarStyle: r.NewStyle().
 			Background(lipgloss.Color(neutral800)).
-			Foreground(lipgloss.Color(primaryLight)),
+			Foreground(lipgloss.Color(primaryDefault)),
 
 		statusScrollDimStyle: r.NewStyle().
 			Background(lipgloss.Color(neutral800)).
@@ -102,6 +126,6 @@ func makeStyles(r *lipgloss.Renderer) Styles {
 
 		statusScrollPctStyle: r.NewStyle().
 			Background(lipgloss.Color(neutral800)).
-			Foreground(lipgloss.Color(neutral400)),
+			Foreground(lipgloss.Color(accentLight)),
 	}
 }
