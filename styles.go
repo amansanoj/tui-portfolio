@@ -3,22 +3,22 @@ package main
 import "github.com/charmbracelet/lipgloss"
 
 const (
-	primaryDefault = "rgb(61, 143, 209)"
-	primaryLight   = "rgb(90, 159, 216)"
-	primaryDeep    = "rgb(39, 108, 165)"
+	primaryDefault = "#3d8fd1"
+	primaryLight   = "#5a9fd8"
+	primaryDeep    = "#276ca5"
 
-	secondaryDefault = "rgb(240, 176, 122)"
-	secondaryStrong  = "rgb(230, 117, 25)"
+	secondaryDefault = "#f0b07a"
+	secondaryStrong  = "#e67519"
 
-	accentDefault = "rgb(168, 158, 105)"
-	accentLight   = "rgb(181, 171, 125)"
+	accentDefault = "#a89e69"
+	accentLight   = "#b5ab7d"
 
-	neutral100 = "rgb(230, 230, 230)"
-	neutral400 = "rgb(153, 153, 153)"
-	neutral600 = "rgb(102, 102, 102)"
-	neutral700 = "rgb(77, 77, 77)"
-	neutral800 = "rgb(51, 51, 51)"
-	neutral900 = "rgb(26, 26, 26)"
+	neutral100 = "#e6e6e6"
+	neutral400 = "#999999"
+	neutral600 = "#666666"
+	neutral700 = "#4d4d4d"
+	neutral800 = "#333333"
+	neutral900 = "#1a1a1a"
 )
 
 type Styles struct {
