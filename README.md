@@ -1,4 +1,4 @@
-![OG Image](https://repo-og-generator.vercel.app/repo-og-generator?description=An%20SSH-accessible%20terminal%20portfolio%20app%20powered%20by%20Bubble%20Tea%20and%20data%20from%20Notion&url=ssh%20whoami.chaya.qzz.io&scale=2)
+![OG Image](https://repo-og-generator.vercel.app/tui-portfolio?description=An%20SSH-accessible%20terminal%20portfolio%20app%20powered%20by%20Bubble%20Tea%20and%20data%20from%20Notion&url=ssh%20whoami.chaya.qzz.io&scale=2)
 
 ## Index
 - [Live Demo](#live-demo)
