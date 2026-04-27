@@ -1,128 +1,88 @@
-# tui-portfolio
+![OG Image](https://repo-og-generator.vercel.app/repo-og-generator?description=An%20SSH-accessible%20terminal%20portfolio%20app%20powered%20by%20Bubble%20Tea%20and%20data%20from%20Notion&url=ssh%20whoami.chaya.qzz.io&scale=2)
 
-An SSH-accessible terminal portfolio app powered by Bubble Tea and data from Notion.
+## Index
+- [Live Demo](#live-demo)
+- [Features](#features)
+- [Project Structure](#project-structure)
+- [Updating Content](#updating-content)
+- [Local Development](#local-development)
+- [Deployment](#deployment)
+- [Credits & License](#credits--license)
 
-Live demo: `ssh ssh.chaya.qzz.io`
+## Live Demo
+You can experience the interactive portfolio directly from your terminal. No installation or configuration is required:
 
-## Preview
+```sh
+ssh whoami.chaya.qzz.io
+```
 
-Add a screenshot or GIF here.
-
-`docs/demo.gif`
-
-## Tech Stack
-
-- Go
-- Bubble Tea
-- Wish (SSH server for Bubble Tea apps)
-- Lip Gloss
-- Notion API
-- fly.io
+## Features
+- Provides an interactive, SSH-accessible terminal interface built natively in Go
+- Fetches project and certification data dynamically at runtime via the Notion API
+- Eliminates the need for code redeployments when portfolio content is updated in Notion
+- Utilizes Lip Gloss to deliver beautiful, customizable terminal layouts and color themes
+- Integrates seamlessly with the Wish framework to serve Bubble Tea apps over SSH
 
 ## Project Structure
+```text
+.
+├── .env.example
+├── Dockerfile
+├── README.md
+├── content_store.go
+├── fly.toml
+├── go.mod
+├── go.sum
+├── main.go
+├── model.go
+├── notion.go
+├── styles.go
+└── views.go
+```
+`main.go` acts as the primary entry point and sets up the SSH server via Wish. Most UI logic and customization lives across `views.go` and `styles.go`.
 
-- `main.go`: Application entry point. Configures and launches the SSH server using the Wish framework.
-- `model.go`: Core state management. Defines the Bubble Tea model, application initialization, and update loops.
-- `views.go`: User interface rendering. Handles the layout for all UI elements including the sidebar, content pages, and status bar.
-- `styles.go`: Application styling. Contains the LipGloss design definitions and color themes.
-- `notion.go`: API integration. Manages fetching and parsing data from the Notion API.
-- `go.mod`: Go module definition and direct dependencies.
-- `go.sum`: Go dependency checksums and lock file.
-- `Dockerfile`: Container configuration for multi-stage application builds.
-- `fly.toml`: Deployment configuration for the fly.io platform.
-- `.gitignore`: Version control exclusions for secrets and local artifacts.
-- `.env.example`: Template outlining required environment variables.
+## Updating Content
+For updating your live portfolio, you do not need to redeploy the codebase:
+
+- The TUI fetches records natively from your Notion databases based on `NOTION_API_KEY`
+- Manage text, projects, and certifications directly within Notion
+- The app automatically syncs fresh content on an interval defined by `NOTION_REFRESH_SECONDS`
+
+If you want to customize the design or structure of the application itself:
+- `styles.go`: modify Lip Gloss color definitions and dimensional stylings
+- `views.go`: adjust the rendering logic for sidebars, content tabs, and footers
+- `model.go`: modify the core Bubble Tea state management
 
 ## Local Development
+To customize the repository or run your own instance locally, ensure you have Go (1.23+) installed and generate a local host key for the SSH server to bind to:
 
-### Prerequisites
-
-- Go 1.23+
-
-### 1. Configure environment
-
-```bash
+```sh
+# Copy environment template
 cp .env.example .env
-```
 
-Set `NOTION_API_KEY` in `.env`.
-
-### 2. Create a local SSH host key
-
-```bash
+# Generate a local SSH host key
 ssh-keygen -t ed25519 -f ./host_key -N ""
-```
 
-### 3. Run locally
-
-```bash
+# Export environment variables and run
 export $(grep -v '^#' .env | xargs)
 export HOST_KEY_PATH=./host_key
 go run .
 ```
+You can then access your local TUI by running `ssh localhost -p 2222`.
 
-### 4. Connect to the local SSH app
+## Deployment
+Deployment is streamlined via Fly.io. Because Fly.io application names must be globally unique, you will need to choose your own unique app name and update the `app` field in your `fly.toml` file before deploying. 
 
-```bash
-ssh localhost -p 2222
-```
+After setting up the Fly CLI, authenticating, and updating your `.toml` file, you can provision the app, mount a persistent volume for the SSH host key, and push to production:
 
-If port 2222 is unavailable on your machine, set `APP_ADDR` to another free port in `.env` and reconnect using that port.
-
-## Environment Variables
-
-| Name | Required | Default | Description |
-| --- | --- | --- | --- |
-| `NOTION_API_KEY` | Yes | none | Notion integration token used to fetch projects and certifications. |
-| `HOST_KEY_PATH` | No | `/data/host_key` | Path to the SSH host private key used by Wish. |
-| `APP_ADDR` | No | `0.0.0.0:2222` | SSH server listen address in `host:port` format. |
-| `SHUTDOWN_TIMEOUT_SECONDS` | No | `30` | Graceful shutdown timeout in seconds. Must be a positive integer. |
-| `NOTION_PROJECTS_DB_ID` | No | built-in default | Notion database ID used for projects. |
-| `NOTION_CERTS_DB_ID` | No | built-in default | Notion database ID used for certifications. |
-| `NOTION_REFRESH_SECONDS` | No | `300` | Background refresh interval for Notion data in seconds. Must be a positive integer. |
-
-## Deploy to fly.io
-
-1. Install and authenticate Fly CLI:
-
-```bash
-fly auth login
-```
-
-2. Create the app (one-time):
-
-```bash
-fly apps create tui-portfolio
-```
-
-3. Create a persistent volume for the SSH host key:
-
-```bash
-fly volumes create portfolio_data --region sin --size 1
-```
-
-4. Set secrets:
-
-```bash
+```sh
+# Replace 'your-unique-app-name' with the name you set in fly.toml
+fly apps create your-unique-app-name
+fly volumes create portfolio_data --region ams --size 1
 fly secrets set NOTION_API_KEY=your_notion_api_key
-```
-
-5. Deploy:
-
-```bash
 fly deploy --remote-only
 ```
+The application will instantly become available via SSH using your assigned fly domain or configured custom domain (like `whoami.chaya.qzz.io`). 
 
-6. Test:
-
-```bash
-ssh ssh.chaya.qzz.io
-```
-
-## Updating Content
-
-Projects and certifications are fetched from Notion at runtime. Update content directly in Notion; no code or redeploy is needed for content changes.
-
-## License
-
-MIT
+## Credits & License
+Constructed using Go, Bubble Tea, Wish, and Lip Gloss. This codebase is open-source. Please check the included LICENSE file for redistribution rights and terms.
